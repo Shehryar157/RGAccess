@@ -14,7 +14,9 @@ class RGA
    {
       var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
       var helperDir:String = FileC["applicationDirectory"].nativePath + "\\RGAccess";
+      RGALog.write("RGA " + VERSION + " starting, helper " + helperDir);
       Speech.init(helperDir,RGAConfig.PYTHONW);
+      RGALog.write("speech started");
       Speech.say("RG Access " + VERSION + " loaded. Press F1 for help.");
 
       // High priority so we see keys before the game does.

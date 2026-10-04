@@ -15,7 +15,7 @@ class Speech
          var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
          if(!NP["isSupported"])
          {
-            trace("RGA: NativeProcess not supported");
+            RGALog.write("NativeProcess not supported");
             return;
          }
          var info:* = new NPSI();
@@ -29,7 +29,7 @@ class Speech
       }
       catch(e:Error)
       {
-         trace("RGA: speech init failed: " + e.message);
+         RGALog.write("speech init failed: " + e.getStackTrace());
       }
    }
 

@@ -1,0 +1,456 @@
+import flash.events.KeyboardEvent;
+import flash.utils.getDefinitionByName;
+
+// One line of the virtual page.
+// kind: "h1", "h2", "text", "button" or "building" (a building is also a button).
+// key: a stable id, so the cursor stays on the same item when the page is rebuilt.
+// action: function(ctrl:Boolean, shift:Boolean) run by Enter, or null.
+class DocLine
+{
+   public var text:String;
+   public var kind:String;
+   public var key:String;
+   public var action:Function;
+
+   public function DocLine(text:String, kind:String, key:String, action:Function = null)
+   {
+      this.text = text;
+      this.kind = kind;
+      this.key = key;
+      this.action = action;
+   }
+
+   public function get isButton() : Boolean
+   {
+      return action != null;
+   }
+
+   public function get isHeading() : Boolean
+   {
+      return kind == "h1" || kind == "h2";
+   }
+
+   // What the screen reader says when you land on this line, like NVDA in browse mode.
+   public function get spoken() : String
+   {
+      if(kind == "h1")
+      {
+         return text + ", heading level 1";
+      }
+      if(kind == "h2")
+      {
+         return text + ", heading level 2";
+      }
+      if(isButton)
+      {
+         return text + ", button";
+      }
+      return text == "" ? "blank" : text;
+   }
+}
+
+// A virtual web page: lines of text with a cursor and selection, read like NVDA browse mode.
+class Doc
+{
+   public var lines:Array = [new DocLine("Loading", "text", "loading")];
+   public var line:int = 0;
+   public var col:int = 0;
+   // Selection anchor: where Shift-selection started. -1 means no selection.
+   private var aLine:int = -1;
+   private var aCol:int = 0;
+   // Called after Enter runs an action, so the page can rebuild right away.
+   public var onAction:Function = null;
+
+   private function cur() : DocLine
+   {
+      return lines[line] as DocLine;
+   }
+
+   // Replace the page contents, keeping the cursor on the same item (matched by key).
+   public function setLines(newLines:Array) : void
+   {
+      if(newLines == null || newLines.length == 0)
+      {
+         return;
+      }
+      var key:String = line < lines.length ? cur().key : null;
+      var oldLine:int = line;
+      lines = newLines;
+      line = -1;
+      for(var i:int = 0; i < lines.length; i++)
+      {
+         if(DocLine(lines[i]).key == key)
+         {
+            line = i;
+            break;
+         }
+      }
+      if(line < 0)
+      {
+         line = Math.min(oldLine,lines.length - 1);
+      }
+      col = Math.min(col,cur().text.length);
+      if(aLine >= lines.length)
+      {
+         aLine = -1;
+      }
+      if(aLine >= 0)
+      {
+         aCol = Math.min(aCol,DocLine(lines[aLine]).text.length);
+      }
+   }
+
+   public function readCurrent() : void
+   {
+      Speech.say(cur().spoken);
+   }
+
+   // Returns true if we used the key (so the game shouldn't see it).
+   public function handleKey(e:KeyboardEvent) : Boolean
+   {
+      var k:uint = e.keyCode;
+      var ctrl:Boolean = e.ctrlKey;
+      var shift:Boolean = e.shiftKey;
+      if(e.altKey)
+      {
+         return false;
+      }
+      // Arrow keys, Home and End: moving and Shift-selecting.
+      if(k == 38 || k == 40 || k == 37 || k == 39 || k == 36 || k == 35)
+      {
+         moveCursor(k,ctrl,shift);
+         return true;
+      }
+      if(ctrl)
+      {
+         if(k == 65) // Ctrl+A
+         {
+            aLine = 0;
+            aCol = 0;
+            line = lines.length - 1;
+            col = cur().text.length;
+            Speech.say("Select all");
+            return true;
+         }
+         if(k == 67) // Ctrl+C
+         {
+            copySelection();
+            return true;
+         }
+      }
+      if(k == 72 && !ctrl) // H / Shift+H
+      {
+         jump(shift ? -1 : 1,"isHeading","heading");
+         return true;
+      }
+      if(k == 66 && !ctrl) // B / Shift+B
+      {
+         jump(shift ? -1 : 1,"building","building");
+         return true;
+      }
+      if(k == 9) // Tab / Shift+Tab
+      {
+         jump(shift ? -1 : 1,"isButton","button");
+         return true;
+      }
+      if(k == 13 || k == 32) // Enter / Space
+      {
+         activate(ctrl,shift);
+         return true;
+      }
+      return false;
+   }
+
+   private function matches(l:DocLine, what:String) : Boolean
+   {
+      if(what == "isHeading")
+      {
+         return l.isHeading;
+      }
+      if(what == "isButton")
+      {
+         return l.isButton;
+      }
+      return l.kind == what;
+   }
+
+   private function jump(dir:int, what:String, name:String) : void
+   {
+      for(var i:int = line + dir; i >= 0 && i < lines.length; i += dir)
+      {
+         if(matches(lines[i],what))
+         {
+            line = i;
+            col = 0;
+            aLine = -1;
+            readCurrent();
+            return;
+         }
+      }
+      Speech.say(dir > 0 ? "No next " + name : "No previous " + name);
+   }
+
+   private function activate(ctrl:Boolean, shift:Boolean) : void
+   {
+      var l:DocLine = cur();
+      if(l.action == null)
+      {
+         return;
+      }
+      try
+      {
+         l.action(ctrl,shift);
+      }
+      catch(err:Error)
+      {
+         Speech.say("Error: " + err.message);
+         return;
+      }
+      if(onAction != null)
+      {
+         onAction();
+      }
+      Speech.say(cur().text);
+   }
+
+   private function moveCursor(k:uint, ctrl:Boolean, shift:Boolean) : void
+   {
+      var oldLine:int = line;
+      var oldCol:int = col;
+      if(shift && aLine < 0)
+      {
+         aLine = line;
+         aCol = col;
+      }
+      if(!shift)
+      {
+         aLine = -1;
+      }
+      var text:String = cur().text;
+      var byLine:Boolean = false;
+      if(k == 38 || k == 40) // Up / Down (Ctrl: jump a paragraph, which here is to the next heading)
+      {
+         var dir:int = k == 40 ? 1 : -1;
+         if(ctrl)
+         {
+            var i:int = line + dir;
+            while(i >= 0 && i < lines.length && !DocLine(lines[i]).isHeading)
+            {
+               i += dir;
+            }
+            line = Math.max(0,Math.min(lines.length - 1,i));
+         }
+         else
+         {
+            line = Math.max(0,Math.min(lines.length - 1,line + dir));
+         }
+         col = 0;
+         byLine = true;
+      }
+      else if(k == 36) // Home (Ctrl: top of page)
+      {
+         if(ctrl)
+         {
+            line = 0;
+            byLine = true;
+         }
+         col = 0;
+      }
+      else if(k == 35) // End (Ctrl: bottom of page)
+      {
+         if(ctrl)
+         {
+            line = lines.length - 1;
+            byLine = true;
+         }
+         col = cur().text.length;
+      }
+      else if(k == 39) // Right
+      {
+         if(ctrl)
+         {
+            col = nextWord(text,col);
+         }
+         else
+         {
+            col++;
+         }
+         if(col > text.length)
+         {
+            if(line < lines.length - 1)
+            {
+               line++;
+               col = 0;
+            }
+            else
+            {
+               col = text.length;
+            }
+         }
+      }
+      else if(k == 37) // Left
+      {
+         if(ctrl)
+         {
+            col = prevWord(text,col);
+         }
+         else
+         {
+            col--;
+         }
+         if(col < 0)
+         {
+            if(line > 0)
+            {
+               line--;
+               col = cur().text.length;
+            }
+            else
+            {
+               col = 0;
+            }
+         }
+      }
+      if(shift)
+      {
+         var moved:String = textBetween(oldLine,oldCol,line,col);
+         var growing:Boolean = dist(line,col) > dist(oldLine,oldCol);
+         Speech.say((moved == "" ? "blank" : moved) + (growing ? " selected" : " unselected"));
+      }
+      else if(byLine)
+      {
+         readCurrent();
+      }
+      else if(ctrl && (k == 37 || k == 39))
+      {
+         Speech.say(wordAt(cur().text,col));
+      }
+      else
+      {
+         Speech.say(charName(cur().text,col));
+      }
+   }
+
+   // Distance of a position from the selection anchor, used to tell selecting from unselecting.
+   private function dist(l:int, c:int) : Number
+   {
+      return Math.abs((l - aLine) * 100000 + (c - aCol));
+   }
+
+   private function nextWord(t:String, c:int) : int
+   {
+      while(c < t.length && t.charAt(c) != " ")
+      {
+         c++;
+      }
+      while(c < t.length && t.charAt(c) == " ")
+      {
+         c++;
+      }
+      return c >= t.length ? t.length + 1 : c;
+   }
+
+   private function prevWord(t:String, c:int) : int
+   {
+      if(c == 0)
+      {
+         return -1;
+      }
+      c--;
+      while(c > 0 && t.charAt(c) == " ")
+      {
+         c--;
+      }
+      while(c > 0 && t.charAt(c - 1) != " ")
+      {
+         c--;
+      }
+      return c;
+   }
+
+   private function wordAt(t:String, c:int) : String
+   {
+      var e:int = c;
+      while(e < t.length && t.charAt(e) != " ")
+      {
+         e++;
+      }
+      var w:String = t.substring(c,e);
+      return w == "" ? "blank" : w;
+   }
+
+   private function charName(t:String, c:int) : String
+   {
+      if(t.length == 0)
+      {
+         return "blank";
+      }
+      if(c >= t.length)
+      {
+         return "end of line";
+      }
+      var ch:String = t.charAt(c);
+      if(ch == " ")
+      {
+         return "space";
+      }
+      if(ch == ",")
+      {
+         return "comma";
+      }
+      if(ch == ".")
+      {
+         return "dot";
+      }
+      if(ch == ":")
+      {
+         return "colon";
+      }
+      return ch;
+   }
+
+   // Text between two positions, in either order, with line breaks between lines.
+   private function textBetween(l1:int, c1:int, l2:int, c2:int) : String
+   {
+      if(l1 > l2 || (l1 == l2 && c1 > c2))
+      {
+         var tl:int = l1;
+         var tc:int = c1;
+         l1 = l2;
+         c1 = c2;
+         l2 = tl;
+         c2 = tc;
+      }
+      if(l1 == l2)
+      {
+         return DocLine(lines[l1]).text.substring(c1,c2);
+      }
+      var parts:Array = [DocLine(lines[l1]).text.substring(c1)];
+      for(var i:int = l1 + 1; i < l2; i++)
+      {
+         parts.push(DocLine(lines[i]).text);
+      }
+      parts.push(DocLine(lines[l2]).text.substring(0,c2));
+      return parts.join("\r\n");
+   }
+
+   private function copySelection() : void
+   {
+      if(aLine < 0)
+      {
+         Speech.say("No selection");
+         return;
+      }
+      var t:String = textBetween(aLine,aCol,line,col);
+      try
+      {
+         var CB:Class = getDefinitionByName("flash.desktop.Clipboard") as Class;
+         CB["generalClipboard"].setData("air:text",t);
+         Speech.say("Copied to clipboard");
+      }
+      catch(err:Error)
+      {
+         Speech.say("Copy failed");
+      }
+   }
+}

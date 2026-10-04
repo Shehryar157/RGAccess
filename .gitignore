@@ -1,0 +1,7 @@
+decomp/
+tools/jdk*/
+tools/ffdec/
+tools/ffdec_help.txt
+build/
+original/
+*.swf

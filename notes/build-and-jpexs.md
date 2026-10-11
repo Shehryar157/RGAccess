@@ -29,5 +29,14 @@ Bash heredocs choke on the scrambled names (the section-sign and quote character
 - Installed mod runs `rga_speech.exe` (PyInstaller); a source build still uses pythonw + `rga_speech.py`. `Speech.as` picks the exe when it exists.
 - On this computer the game holds a source build, which the installer refuses. To try the installer on the real game: close the game, `python tools/build.py --restore`, then run the setup.
 - Testing without the game: `python installer/setup.py --silent --no-update --game <scratch folder with the original SWF and an empty RealmGrinderDesktop.exe>`. `--silent` skips the "game is running" check.
-- Tested 2026-10-11: scratch install, reinstall, refusal of a changed file, packed helper finds NVDA. NOT tested: the windows (progress, update dialog), the uninstaller, the update download (needs a published release), the release build inside the real game.
+- Tested: scratch install, reinstall, refusal of a changed file, packed helper finds NVDA (2026-10-11); the update check against the real release (2026-10-12: an older version is offered 0.1, the same version nothing). NOT tested: the windows (progress, update dialog, done message), the uninstaller, the download-and-hand-over step, the release build inside the real game.
 - Updater expects repo `Shehryar157/RGAccess` (public), release tag `v<version>`, asset `RGAccess-Setup.exe`; release description = "what's new".
+
+## Publishing a release (done for v0.1 on 2026-10-12)
+- Repo: https://github.com/Shehryar157/RGAccess (public, branch master). `gh` is not installed; the GitHub API is called with curl and the token from `git credential fill` (never print it).
+- Steps: raise `VERSION`; close the game; `python tools/build_release.py`; commit and push; POST `/repos/Shehryar157/RGAccess/releases` with `tag_name` v<version>, `target_commitish` master and the "what's new" text as `body`; upload `dist/RGAccess-Setup.exe` to `uploads.github.com/repos/Shehryar157/RGAccess/releases/<id>/assets?name=RGAccess-Setup.exe`.
+- Check afterwards, from `installer/`: `setup.newer_installer('0.0.1')` should answer with the new version and its download address.
+- Creating the repo and the first push were blocked by the permission system until the user asked for them outright. Ask before publishing anything.
+- `tools/build_release.py` leaves the RELEASE variant in `build/`; run `python tools/build.py` afterwards to get the development build (remote control on) back into the game.
+- Build with the game closed: with it open, Java ran out of memory ("paging file is too small"). `-Xmx1g` is set in `tools/build.py`.
+- Scripted edits of files with scrambled names: write a small Python file with the Write tool and run it. A bash heredoc with the script inside failed on the quotes.

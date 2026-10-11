@@ -38,7 +38,7 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - When a dialog or notification appears, `RGA.refresh` calls `Doc.visit(key)`: the cursor moves to its heading (`h:dialog`, `h:` + toast class) and `Doc.backKey` remembers the old line, used by `setLines` when the heading disappears.
 - Seen once: the first `press Close` on Offline Production after a restart did nothing, the second worked. Cause unknown (possibly the real mouse sharing touch id 0).
 
-- After Enter, `RGA.afterAction` waits 300 ms, rebuilds the page and speaks `RGA.result`: building count changed ("Farm purchased, 7 owned"), list item gone or moved group ("X purchased"), same line with new text, or a level 1 heading that appeared or went ("Upgrades panel opened"). The remote `press` goes through it too, so results show in rga_speech.log. Confirmed for panels and dialogs; building and upgrade purchases not yet seen.
+- After Enter, `RGA.afterAction` waits 300 ms, rebuilds the page and speaks `RGA.result`: a building whose line changed is read again whole (the user asked for this instead of "Farm purchased"), "Cannot afford X" for an unchanged unavailable building, list item gone or moved group ("X purchased"), same line with new text, or a level 1 heading that appeared or went ("Upgrades panel opened"). The remote `press` goes through it too, so results show in rga_speech.log. Confirmed for panels and dialogs; building and upgrade purchases not yet seen.
 - Buy amount `4X::2!C` opens a text-less dialog of choices (BUY 1, 10, 100, 1000, 10000, SMART, MAX). Above BUY 1 a building's cost label is "4x 116"; the page says "costs 116 for 4". Tooltip: Control click buys 10, Shift click 100, both MAX (modifier keys with simulated clicks still untested).
 - Status bar amounts `"#::=!R` are text lines, not buttons (they keep their target for T).
 
@@ -61,3 +61,6 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 
 ## Not yet explored
 Events, the Mana/Spells button, Shop, Statistics, Options, Scrying, Kong; faction choice; abdication; options; stats; scroll containers whose contents are off screen; whether simulated clicks honour Control and Shift.
+- Tooltip lines pass through `RGPage.keys`: CTRL+Click, SHIFT+Click and the whole word Click become Control Enter, Shift Enter and Press Enter ("Clicking Reward" stays).
+- `RGPage.keys` is also applied to every Label (dialogs, panels), not only tooltips; "Click this button" becomes "Press Enter on this button". It is NOT inside `clean`, because the remote uses `clean` on its commands ("click x y").
+- Tips and Hints `4X::^C`: pressing it does nothing; the current hint is its tooltip (T). On 2026-10-11 it said: gather 20 faction coins of one faction and sign a Trade Treaty with them. The dialog wording change is unverified live (no dialog containing "click" was open); the same function is verified on tooltips.

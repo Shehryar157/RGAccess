@@ -155,13 +155,6 @@ class RGA
       return o;
    }
 
-   // The number in "Farm, 6 owned, costs..." (as text: it may be written like 1.2 M).
-   private static function owned(text:String) : String
-   {
-      var m:Array = text.match(new RegExp(", (\\S+) owned"));
-      return m == null ? "" : String(m[1]);
-   }
-
    // What pressing the line "old" did, found by comparing it with the page as it is now. "" if nothing to say.
    private static function result(old:DocLine) : String
    {
@@ -180,11 +173,12 @@ class RGA
       var name:String = String(old.text.split(",")[0]);
       if(old.kind == "building" && now != null)
       {
-         if(owned(now.text) != owned(old.text))
+         // A bought building is read again as it is now: new count, new price.
+         if(now.text != old.text)
          {
-            return name + " purchased, " + owned(now.text) + " owned";
+            return now.spoken;
          }
-         return old.text.indexOf("unavailable") >= 0 ? "Cannot afford " + name : name + " not purchased";
+         return old.text.indexOf("unavailable") >= 0 ? "Cannot afford " + name : "";
       }
       if(item != null && item.index >= 0)
       {
@@ -200,7 +194,7 @@ class RGA
       }
       if(now != null && now.text != old.text)
       {
-         return now.text;
+         return now.spoken;
       }
       // A part of the screen opened or closed.
       var after:Object = heads();
@@ -249,7 +243,7 @@ class RGA
       l.push(new DocLine("Enter on a building: buy it, using the game's buy mode.","text","k:buy"));
       l.push(new DocLine("Control Enter: buy 10. Shift Enter: buy 100. Control Shift Enter: buy as many as you can afford.","text","k:buymod"));
       l.push(new DocLine("T on a building reads what each of those would cost.","text","k:buytip"));
-      l.push(new DocLine("After Enter, the mod says what happened, for example Farm purchased, 7 owned. It says nothing if nothing changed.","text","k:result"));
+      l.push(new DocLine("After Enter, the mod reads the button again if it changed, for example a building with its new count and price. It says nothing if nothing changed.","text","k:result"));
       d.lines = l;
       return d;
    }

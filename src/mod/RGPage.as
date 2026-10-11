@@ -147,7 +147,7 @@ class RGPage
       }
       if(obj is Label)
       {
-         var t:String = clean(String(Object(obj)["text"]));
+         var t:String = keys(clean(String(Object(obj)["text"])));
          if(t != "")
          {
             out.push(new DocLine(t,"text",nextKey("t")));
@@ -608,7 +608,7 @@ class RGPage
       }
       if(obj is Label)
       {
-         var t:String = clean(String(Object(obj)["text"]));
+         var t:String = keys(clean(String(Object(obj)["text"])));
          if(t != "")
          {
             out.push(t);
@@ -711,7 +711,7 @@ class RGPage
          var parts:Array = body.split("\n");
          for(var i:int = 0; i < parts.length; i++)
          {
-            var p:String = clean(parts[i]);
+            var p:String = keys(clean(parts[i]));
             if(p != "" && p != "Test Body")
             {
                out.push(p);
@@ -722,6 +722,23 @@ class RGPage
       {
       }
       return out;
+   }
+
+   // The game's texts (labels, dialogs, tooltips) talk about the mouse ("CTRL+Click", "Click here to...");
+   // say the key that does it here.
+   // Only the whole word: "Clicking Reward" is the game's name for something and stays.
+   private static function keys(s:String) : String
+   {
+      s = s.replace(new RegExp("CTRL\\+SHIFT\\+Click","gi"),"Control Shift Enter");
+      s = s.replace(new RegExp("CTRL\\+Click","gi"),"Control Enter");
+      s = s.replace(new RegExp("SHIFT\\+Click","gi"),"Shift Enter");
+      // "Click this button" and "Click on the X" become "Press Enter on ...".
+      s = s.replace(new RegExp("\\b([Cc])lick on\\b","g"),"$1lick");
+      s = s.replace(new RegExp("\\bClick (this|the|a|an|any|your)\\b","g"),"Press Enter on $1");
+      s = s.replace(new RegExp("\\bclick (this|the|a|an|any|your)\\b","g"),"press Enter on $1");
+      s = s.replace(new RegExp("\\bClick\\b","g"),"Press Enter");
+      s = s.replace(new RegExp("\\bclick\\b","g"),"press Enter");
+      return s;
    }
 
    // Strip the game's formatting tags (<font>, <b> ...) and tidy spaces.

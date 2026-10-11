@@ -69,7 +69,7 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - Mana orb `]!6::7R`: not a button. A tap only shows its tooltip (max mana, per second, spells cast); "Spells" under it is the caption of the spell bar. Now a text line; T reads the tooltip.
 - Abdication (button at the top of the Upgrades panel): dialog with title, explanation (gems to gain), buttons Abdicate, Gem Conversion, Close. Reads well. Not confirmed, of course.
 - Faction choice is done by buying upgrades (Proof of Good Deed, Trade Treaties, then the faction), so it goes through the Upgrades list.
-- Named dialogs (`RGPage.dialogName`: Statistics, Options) are announced by name only; their text is long and changes every second. This last bit is built but not yet run.
+- Named dialogs (`RGPage.dialogName`: Statistics, Options) are announced by name only; their text is long and changes every second. Confirmed: the speech log says "Dialog. Statistics".
 
 ## Control and Shift presses (confirmed)
 - The game's base control passes `TouchEvent.ctrlKey/shiftKey` to its click function; a building row hands them to the buy function. Starling's TouchProcessor fills them from private flags it sets when a "keyDown"/"keyUp" event with keyCode 17 or 16 reaches the Starling stage. `RGPage.modifier` dispatches such a `starling.events.KeyboardEvent` before every tap (`tap(x, y, ctrl, shift)`).
@@ -85,3 +85,7 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - Tooltip lines pass through `RGPage.keys`: CTRL+Click, SHIFT+Click and the whole word Click become Control Enter, Shift Enter and Press Enter ("Clicking Reward" stays).
 - `RGPage.keys` is also applied to every Label (dialogs, panels), not only tooltips; "Click this button" becomes "Press Enter on this button". It is NOT inside `clean`, because the remote uses `clean` on its commands ("click x y").
 - Tips and Hints `4X::^C`: pressing it does nothing; the current hint is its tooltip (T). On 2026-10-11 it said: gather 20 faction coins of one faction and sign a Trade Treaty with them. The dialog wording change is unverified live (no dialog containing "click" was open); the same function is verified on tooltips.
+
+## Tooltip keys (changed 2026-10-11, late)
+- T speaks the whole tooltip of the current line and opens nothing. Shift+T speaks it and opens it as a page (the old T behaviour); Escape closes. `RGA.showTooltip(open)`. The user asked for this split.
+- NOT tested: the remote cannot type keys, only press lines. Ask the user how T and Shift+T behave.

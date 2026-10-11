@@ -11,6 +11,8 @@ class DocLine
    public var kind:String;
    public var key:String;
    public var action:Function;
+   // The game object this line stands for. When set, action is called as action(target, ctrl, shift).
+   public var target:Object = null;
 
    public function DocLine(text:String, kind:String, key:String, action:Function = null)
    {
@@ -206,7 +208,14 @@ class Doc
       }
       try
       {
-         l.action(ctrl,shift);
+         if(l.target != null)
+         {
+            l.action(l.target,ctrl,shift);
+         }
+         else
+         {
+            l.action(ctrl,shift);
+         }
       }
       catch(err:Error)
       {

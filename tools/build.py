@@ -63,7 +63,10 @@ def deploy(swf):
     os.makedirs(helper, exist_ok=True)
     shutil.copy2(os.path.join(ROOT, "src", "helper", "rga_speech.py"), helper)
     for dll in ("Tolk.dll", "nvdaControllerClient64.dll", "SAAPI64.dll"):
-        shutil.copy2(os.path.join(FFC_NATIVE, dll), helper)
+        try:
+            shutil.copy2(os.path.join(FFC_NATIVE, dll), helper)
+        except PermissionError:
+            pass  # the game is running and has the DLL open; it never changes anyway
     print("Built and installed into the game.")
 
 

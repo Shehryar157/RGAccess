@@ -44,12 +44,14 @@ class RGA
    }
 
    private static var lastError:String = "";
+   private static var lastPopup:String = "";
 
    private static function dumpTree() : void
    {
       try
       {
          RGADump.dump();
+         RGPage.dump(doc.lines);
       }
       catch(e:Error)
       {
@@ -62,6 +64,14 @@ class RGA
       try
       {
          doc.setLines(RGPage.build());
+         if(RGPage.popupText != lastPopup)
+         {
+            lastPopup = RGPage.popupText;
+            if(lastPopup != "")
+            {
+               Speech.say("Dialog. " + lastPopup,false);
+            }
+         }
       }
       catch(e:Error)
       {
@@ -94,6 +104,8 @@ class RGA
       l.push(new DocLine("H and Shift H: next or previous heading.","text","k:h"));
       l.push(new DocLine("Tab and Shift Tab: next or previous button.","text","k:tab"));
       l.push(new DocLine("Enter or Space: press the button you are on.","text","k:enter"));
+      l.push(new DocLine("T: read the tooltip of the button you are on. It opens as a page; Escape closes it.","text","k:tip"));
+      l.push(new DocLine("Dialogs, such as the advisor, are spoken when they appear and are listed at the top of the page.","text","k:dlg"));
       l.push(new DocLine("Buildings","h2","g:bld"));
       l.push(new DocLine("B and Shift B: next or previous building.","text","k:b"));
       l.push(new DocLine("Enter on a building: buy it, using the game's buy mode.","text","k:buy"));
@@ -107,12 +119,33 @@ class RGA
       if(help != null)
       {
          help = null;
-         Speech.say("Help closed");
+         Speech.say("Closed");
          Speech.say(doc.lines.length > doc.line ? DocLine(doc.lines[doc.line]).spoken : "",false);
          return;
       }
       help = buildHelp();
       help.readCurrent();
+   }
+
+   // Opens the current control's tooltip as a small page of its own; Escape closes it.
+   private static function showTooltip() : void
+   {
+      var l:DocLine = doc.lines.length > doc.line ? DocLine(doc.lines[doc.line]) : null;
+      var tip:Array = l == null || l.target == null ? [] : RGPage.tooltip(l.target);
+      if(tip.length == 0)
+      {
+         Speech.say("No tooltip");
+         return;
+      }
+      var a:Array = [];
+      for(var i:int = 0; i < tip.length; i++)
+      {
+         a.push(new DocLine(tip[i],i == 0 ? "h2" : "text","tip" + i));
+      }
+      a.push(new DocLine("End of tooltip. Escape closes.","text","tipend"));
+      help = new Doc();
+      help.setLines(a);
+      Speech.say(tip.join(". "));
    }
 
    private static function onKey(e:KeyboardEvent) : void
@@ -132,6 +165,11 @@ class RGA
       else if(help != null)
       {
          used = help.handleKey(e);
+      }
+      else if(e.keyCode == 84 && !e.ctrlKey && !e.altKey) // T: tooltip of the current line
+      {
+         showTooltip();
+         used = true;
       }
       else
       {

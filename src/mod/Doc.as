@@ -235,22 +235,10 @@ class Doc
       }
       var text:String = cur().text;
       var byLine:Boolean = false;
-      if(k == 38 || k == 40) // Up / Down (Ctrl: jump a paragraph, which here is to the next heading)
+      if(k == 38 || k == 40) // Up / Down. With Ctrl it's "by paragraph", and here every line is a paragraph.
       {
          var dir:int = k == 40 ? 1 : -1;
-         if(ctrl)
-         {
-            var i:int = line + dir;
-            while(i >= 0 && i < lines.length && !DocLine(lines[i]).isHeading)
-            {
-               i += dir;
-            }
-            line = Math.max(0,Math.min(lines.length - 1,i));
-         }
-         else
-         {
-            line = Math.max(0,Math.min(lines.length - 1,line + dir));
-         }
+         line = Math.max(0,Math.min(lines.length - 1,line + dir));
          col = 0;
          byLine = true;
       }

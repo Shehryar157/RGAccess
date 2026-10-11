@@ -31,12 +31,31 @@ class RGA
    }
 
    // A named function, not an inline one: JPEXS miscompiles inline functions (VerifyError).
+   private static var ticks:int = 0;
+
    private static function onTick(e:TimerEvent) : void
    {
       refresh();
+      ticks++;
+      if(ticks == 25 && RGADump.wanted())
+      {
+         dumpTree();
+      }
    }
 
    private static var lastError:String = "";
+
+   private static function dumpTree() : void
+   {
+      try
+      {
+         RGADump.dump();
+      }
+      catch(e:Error)
+      {
+         RGALog.write("dump failed: " + e.getStackTrace());
+      }
+   }
 
    private static function refresh() : void
    {
@@ -68,7 +87,7 @@ class RGA
       l.push(new DocLine("F1: this help. Press it again, or Escape, to close.","text","k:f1"));
       l.push(new DocLine("Reading the page","h2","g:read"));
       l.push(new DocLine("Up and Down arrows: previous or next line.","text","k:ud"));
-      l.push(new DocLine("Control with Up or Down: previous or next section.","text","k:cud"));
+      l.push(new DocLine("Control with Up or Down: previous or next paragraph. Here every line is a paragraph, so it is the same as Up or Down.","text","k:cud"));
       l.push(new DocLine("Left and Right arrows: previous or next character. With Control: by word.","text","k:lr"));
       l.push(new DocLine("Home and End: start or end of the line. With Control: top or bottom of the page.","text","k:he"));
       l.push(new DocLine("Shift with any movement key: select text. Control C copies, Control A selects all.","text","k:sel"));
@@ -99,6 +118,12 @@ class RGA
    private static function onKey(e:KeyboardEvent) : void
    {
       var used:Boolean = false;
+      if(e.keyCode == 123 && e.ctrlKey && e.shiftKey) // Control+Shift+F12: research dump
+      {
+         dumpTree();
+         Speech.say("Screen tree saved");
+         return;
+      }
       if(e.keyCode == 112 || (help != null && e.keyCode == 27)) // F1, or Escape in help
       {
          toggleHelp();

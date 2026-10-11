@@ -38,7 +38,7 @@ class RGPage
    private static function buildingLine(row:§[!2§) : DocLine
    {
       var b:* = row.§%<§;
-      var name:String = b.§3y§ != null && b.§3y§ != "" ? b.§3y§ : b.§1i§;
+      var name:String = §&c§.§>!&§(b.id); // the game's own "name shown on the row" function
       var text:String = name + ", " + fmt(b.§!a§) + " owned, costs " + fmt(b.§`!X§(1));
       return new DocLine(text,"building","b:" + b.ids,function(ctrl:Boolean, shift:Boolean):void
       {

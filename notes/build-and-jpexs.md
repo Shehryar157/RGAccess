@@ -20,4 +20,4 @@
 Bash heredocs choke on the scrambled names (the section-sign and quote characters). Write files containing them with the Write tool, not `cat <<EOF`.
 
 ## Regular expressions
-- In ActionScript a pattern needs doubled backslashes: `new RegExp(", (\S+) owned")`. Twice a scripted edit (Python in a Bash heredoc) wrote a single backslash, which compiles but never matches. After any scripted edit, grep the line and check it; fix with the Edit tool.
+- In ActionScript a pattern needs doubled backslashes: `new RegExp(", (\\S+) owned")`. Twice a scripted edit (Python in a Bash heredoc) wrote a single backslash, which compiles but never matches. After any scripted edit, grep the line and check it; fix with the Edit tool.

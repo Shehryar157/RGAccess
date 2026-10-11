@@ -65,7 +65,7 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - Shop: title, description and price buttons per product; reads well as is. Real money, never press.
 - Scrying: a dialog that only says it is unavailable on this platform.
 - Events panel `]!6::@h`: "No event is currently running". Untested with a live event.
-- Kong tab: pressing it changes nothing in the tree on Steam, no tooltip. Left as is.
+- Kong tab: pressing it changes nothing in the tree on Steam, no tooltip. It most likely opens a Kongregate page in the web browser (the user found a new browser tab after my presses, 2026-10-11; not verified in code). Do not press it in tests. Left as is.
 - Mana orb `]!6::7R`: not a button. A tap only shows its tooltip (max mana, per second, spells cast); "Spells" under it is the caption of the spell bar. Now a text line; T reads the tooltip.
 - Abdication (button at the top of the Upgrades panel): dialog with title, explanation (gems to gain), buttons Abdicate, Gem Conversion, Close. Reads well. Not confirmed, of course.
 - Faction choice is done by buying upgrades (Proof of Good Deed, Trade Treaties, then the faction), so it goes through the Upgrades list.

@@ -61,10 +61,9 @@ Windows may warn about the setup because it is not signed. Choose "More info", t
 - Home and End: start or end of the line. With Control: top or bottom of the page.
 - Shift with any movement key: select text. Control C copies, Control A selects all.
 - H and Shift H: next or previous heading.
-- R: jump to Resources.
-- P: jump to Spells.
+- R: jump to the Toolbar. Resources is the heading just before it: press Shift H.
+- S: jump to Spells.
 - U: jump to Upgrades. If the panel is closed, it is opened first.
-- S: open Statistics. If it is already open, jump to its top.
 - O: open Options. If it is already open, jump to its top.
 - Tab and Shift Tab: next or previous button.
 - Enter or Space: press the button you are on.

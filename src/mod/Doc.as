@@ -217,12 +217,12 @@ class Doc
          jump(shift ? -1 : 1,"building","building");
          return true;
       }
-      if(k == 82 && !ctrl) // R: the Resources section
+      if(k == 82 && !ctrl) // R: the Toolbar section
       {
-         jumpToKey("h:resources","No resources on this screen");
+         jumpToKey("h:toolbar","No toolbar on this screen");
          return true;
       }
-      if(k == 80 && !ctrl) // P: the Spells section
+      if(k == 83 && !ctrl) // S: the Spells section
       {
          jumpToKey("h:]!6::3!5","No spells on this screen");
          return true;
@@ -230,11 +230,6 @@ class Doc
       if(k == 85 && !ctrl) // U: the Upgrades panel, opened first if it is closed
       {
          goTo("h:]!6::>F","","\"#:: !D#0","Upgrades");
-         return true;
-      }
-      if(k == 83 && !ctrl) // S: the Statistics dialog, opened first if it is closed
-      {
-         goTo("","Statistics dialog","4X::9P#0","Statistics");
          return true;
       }
       if(k == 79 && !ctrl) // O: the Options dialog, opened first if it is closed

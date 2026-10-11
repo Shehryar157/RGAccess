@@ -1,5 +1,6 @@
 import feathers.controls.Button;
 import feathers.controls.Label;
+import feathers.controls.renderers.IGroupedListHeaderRenderer;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 import flash.utils.getDefinitionByName;
@@ -35,12 +36,20 @@ class RGPage
       var j:int;
       counts = new Object();
       manaDone = false;
+      lastCls = "";
+      toastText = "";
       var stage:DisplayObjectContainer = Starling.current.stage;
       // Everything on the stage after the first child is a dialog on top of the game.
       for(i = stage.numChildren - 1; i >= 1; i--)
       {
          var part:Array = [];
-         walk(stage.getChildAt(i),part);
+         var top:DisplayObject = stage.getChildAt(i);
+         // A hover tooltip also sits on top of the game, but it is not a dialog. The T key reads tooltips.
+         if(!top.touchable || getQualifiedClassName(top) == TOOLTIP)
+         {
+            continue;
+         }
+         walk(top,part);
          if(part.length > 0)
          {
             var hasButton:Boolean = false;
@@ -103,15 +112,52 @@ class RGPage
       {
          return;
       }
-      if((obj is §6+§ || obj is Button) && (c == null || !hasControl(c)))
+      if(obj is IGroupedListHeaderRenderer)
       {
-         out.push(controlLine(obj,cls));
+         // The title of one section of a list, like "Unpurchased Upgrades".
+         var heads:Array = [];
+         collectLabels(obj,heads);
+         if(heads.length > 0)
+         {
+            out.push(new DocLine(heads.join(", "),"h2",nextKey("h2:" + heads[0])));
+         }
+         return;
+      }
+      if((obj is §6+§ || obj is Button || isItem(obj)) && (c == null || !hasControl(c)))
+      {
+         var line:DocLine = controlLine(obj,cls);
+         // Several identical buttons in a row (the assistants on the realm) are read once.
+         if(out.length > 0 && DocLine(out[out.length - 1]).text == line.text && lastCls == cls && line.kind != "building")
+         {
+            return;
+         }
+         lastCls = cls;
+         // A picture that cannot be touched is decoration, like the houses drawn on the realm.
+         if((!obj.touchable || obj is Button) && line.text.indexOf("Unlabelled") == 0)
+         {
+            return;
+         }
+         // The parts of a scroll bar are thin, nameless buttons; arrows scroll here instead.
+         if(obj is Button && line.text.indexOf("Close") == 0 && (obj.width < 12 || obj.height < 12))
+         {
+            return;
+         }
+         out.push(line);
          return;
       }
       var head:String = sectionName(cls);
+      var headAt:int = -1;
       if(head != "" && cls != STATUS)
       {
+         headAt = out.length;
          out.push(new DocLine(head,"h1","h:" + cls));
+      }
+      if(cls == TOAST)
+      {
+         // A banner the game slides in, like "You unlocked the trophy...". RGA speaks it.
+         var banner:Array = [];
+         collectLabels(obj,banner);
+         toastText = banner.join(" ");
       }
       if(cls == "]!6::%!a")
       {
@@ -146,19 +192,69 @@ class RGPage
          }
          return;
       }
+      var kids:Array = [];
       for(i = 0; i < c.numChildren; i++)
       {
-         walk(c.getChildAt(i),out);
+         kids.push(c.getChildAt(i));
       }
+      if(cls.indexOf("DataViewPort") >= 0)
+      {
+         // A list keeps its rows in any order; read them as they look, top to bottom, left to right.
+         kids.sort(byPosition);
+      }
+      for(i = 0; i < kids.length; i++)
+      {
+         walk(kids[i],out);
+      }
+      if(headAt >= 0 && out.length == headAt + 1)
+      {
+         // Nothing under the heading, so leave the heading out too.
+         out.pop();
+      }
+   }
+
+   private static var lastCls:String = "";
+
+   private static function byPosition(a:DisplayObject, b:DisplayObject) : int
+   {
+      if(Math.abs(a.y - b.y) > 5)
+      {
+         return a.y < b.y ? -1 : 1;
+      }
+      return a.x < b.x ? -1 : (a.x > b.x ? 1 : 0);
+   }
+
+   // A row of one of the game's lists (an upgrade, a trophy...). Every such row has two
+   // functions: ["[B"]() gives its title and ["@\""]() its description.
+   private static function isItem(obj:Object) : Boolean
+   {
+      return obj.hasOwnProperty("[B") && obj.hasOwnProperty("@\"");
    }
 
    private static var STATUS:String = "]!6::+r";
    private static var MANA:String = "]!6::7R";
+   private static var TOOLTIP:String = "1Z::!s";
+   private static var TOAST:String = "'?::8!L";
+   // Text of the notification banner on screen, or "".
+   public static var toastText:String = "";
 
    // Names for buttons that are only a picture: no text and no tooltip title.
    // Found from the picture each class loads (UIShop, BGView, UIAudio, UICog) and the dialog it opens.
    private static function iconName(obj:DisplayObject, cls:String) : String
    {
+      if(cls == "\"#::>W")
+      {
+         // A faction coin counter; the game keeps the coin names in a list.
+         try
+         {
+            var names:Object = getDefinitionByName("-D")["45"];
+            return String(names[Object(obj)["@e"]]) + " coins";
+         }
+         catch(e:Error)
+         {
+         }
+         return "";
+      }
       if(cls == "4X::=!_")
       {
          return "Shop";
@@ -215,6 +311,22 @@ class RGPage
       {
          return "Menu";
       }
+      if(cls == "]!6::>F")
+      {
+         return "Upgrades panel";
+      }
+      if(cls == "]!6::8T")
+      {
+         return "Trophies panel";
+      }
+      if(cls == "]!6::3!5")
+      {
+         return "Spells";
+      }
+      if(cls == TOAST)
+      {
+         return "Notification";
+      }
       if(cls == STATUS)
       {
          return "Resources";
@@ -222,6 +334,11 @@ class RGPage
       if(cls == "]!6::7R")
       {
          return "Mana and spells";
+      }
+      if(cls.indexOf("]!6::") == 0)
+      {
+         // A panel of the main screen that has no name here yet.
+         return "Panel";
       }
       return "";
    }
@@ -255,6 +372,25 @@ class RGPage
       {
          text = iconName(obj,cls);
       }
+      else if(cls == "\"#::>W" && iconName(obj,cls) != "")
+      {
+         text = iconName(obj,cls) + ", " + text;
+      }
+      if(isItem(obj))
+      {
+         // The first tooltip line after the title is the price, when there is one.
+         var tip:Array = tooltip(obj);
+         if(tip.length > 1 && String(tip[1]).indexOf(":") > 0 && String(tip[1]).length < 60)
+         {
+            text += ", " + tip[1];
+         }
+         // The game draws a row it will not let you buy half transparent.
+         var box:DisplayObjectContainer = obj as DisplayObjectContainer;
+         if(box != null && box.numChildren > 0 && box.getChildAt(0).alpha < 0.99)
+         {
+            text += tip.length > 1 && String(tip[1]).indexOf("Cost") == 0 ? ", cannot afford" : ", locked";
+         }
+      }
       if(text == "" && obj is Button)
       {
          text = clean(String(Object(obj)["label"]));
@@ -268,6 +404,10 @@ class RGPage
          text = "Unlabelled";
       }
       var o:Object = obj;
+      if(text == "Close" && o.hasOwnProperty("isEnabled") && !o["isEnabled"])
+      {
+         text = "Unlabelled";
+      }
       if(o.hasOwnProperty("isEnabled") && !o["isEnabled"])
       {
          text += ", unavailable";
@@ -335,6 +475,17 @@ class RGPage
 
    private static function tipTitle(obj:Object) : String
    {
+      if(isItem(obj))
+      {
+         try
+         {
+            return clean(String(obj["[B"]()));
+         }
+         catch(e0:Error)
+         {
+         }
+         return "";
+      }
       if(!(obj is §6+§))
       {
          return "";
@@ -357,7 +508,7 @@ class RGPage
    public static function tooltip(target:Object) : Array
    {
       var out:Array = [];
-      if(!(target is §6+§))
+      if(target == null || !(target is §6+§ || isItem(target)))
       {
          return out;
       }
@@ -368,7 +519,7 @@ class RGPage
       }
       try
       {
-         var body:String = String(target["9!0"]());
+         var body:String = String(isItem(target) ? target["@\""]() : target["9!0"]());
          body = body.replace(new RegExp("<br ?/?>","gi"),"\n").split("\r").join("\n");
          var parts:Array = body.split("\n");
          for(var i:int = 0; i < parts.length; i++)
@@ -426,7 +577,7 @@ class RGPage
          }
       }
       RGALog.write("click " + getQualifiedClassName(d) + " COVERED everywhere by " + cover + state(d) + ", bounds " + r);
-      tap(r.x + r.width / 2,r.y + r.height / 2);
+      throw new Error("Blocked, something is on top of this button. If a dialog is open, close it first. It is at the top of the page.");
    }
 
    private static function state(d:Object) : String
@@ -468,26 +619,38 @@ class RGPage
    }
 
    // Feed Starling (the game's graphics engine) a mouse move, press and release at x, y.
-   private static function tap(x:Number, y:Number) : void
+   public static function tap(x:Number, y:Number) : void
    {
       var tp:* = Starling.current.touchProcessor;
       tp.enqueue(0,"hover",x,y);
       tp.enqueue(0,"began",x,y);
       tp.enqueue(0,"ended",x,y);
+      // Move the pretend mouse off the screen again, or the game keeps a hover tooltip open.
+      tp.enqueue(0,"hover",-5000,-5000);
    }
 
    // Research: write the current page to rga_page.txt next to the log.
-   public static function dump(lines:Array) : void
+   // Each line as spoken, then its key in brackets, then its tooltip lines indented.
+   public static function dump(lines:Array, name:String = "") : void
    {
       var a:Array = [];
       for(var i:int = 0; i < lines.length; i++)
       {
-         a.push(DocLine(lines[i]).spoken);
+         var l:DocLine = DocLine(lines[i]);
+         a.push(l.spoken + "   [" + l.key + "]");
+         if(l.target != null)
+         {
+            var tip:Array = tooltip(l.target);
+            for(var j:int = 0; j < tip.length; j++)
+            {
+               a.push("      tip: " + tip[j]);
+            }
+         }
       }
       var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
       var FS:Class = getDefinitionByName("flash.filesystem.FileStream") as Class;
       var s:* = new FS();
-      s.open(FileC["applicationStorageDirectory"].resolvePath("rga_page.txt"),"write");
+      s.open(FileC["applicationStorageDirectory"].resolvePath("rga_page" + (name == "" ? "" : "_" + name) + ".txt"),"write");
       s.writeUTFBytes(a.join("\r\n"));
       s.close();
    }

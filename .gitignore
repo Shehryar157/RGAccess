@@ -5,3 +5,4 @@ tools/ffdec_help.txt
 build/
 original/
 *.swf
+save_backups/

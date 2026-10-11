@@ -1,0 +1,168 @@
+import flash.utils.getDefinitionByName;
+
+// Research remote control, so the game can be explored without anyone at the keyboard.
+// Once a second it looks for rga_cmd.txt in the Local Store folder (next to rga_debug.log),
+// runs its lines one per second, and writes what happened to rga_cmd_done.txt.
+// tools/remote.py is the sending side. Commands:
+//   press <text>     activate the first button whose line starts with <text>
+//   presskey <key>   activate the line with exactly this key (keys are shown in page dumps)
+//   tip <text>       report the tooltip of the first line that starts with <text>
+//   dump <name>      write rga_tree_<name>.txt and rga_page_<name>.txt
+//   wait <seconds>   do nothing for a while
+//   click <x> <y>    a raw click at stage coordinates
+//   static <class> <field>   show a static field of a game class
+class RGARemote
+{
+   private static var queue:Array = null;
+   private static var results:Array = null;
+   private static var waitTicks:int = 0;
+
+   public static function tick(doc:Doc) : void
+   {
+      try
+      {
+         if(queue == null || queue.length == 0)
+         {
+            load();
+            return;
+         }
+         if(waitTicks > 0)
+         {
+            waitTicks--;
+            return;
+         }
+         var cmd:String = String(queue.shift());
+         results.push(cmd + " -> " + run(cmd,doc));
+         if(queue.length == 0)
+         {
+            write("rga_cmd_done.txt",results.join("\r\n"));
+         }
+      }
+      catch(e:Error)
+      {
+         RGALog.write("remote failed: " + e.getStackTrace());
+         queue = null;
+      }
+   }
+
+   private static function load() : void
+   {
+      var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
+      var f:* = FileC["applicationStorageDirectory"].resolvePath("rga_cmd.txt");
+      if(!f.exists)
+      {
+         return;
+      }
+      var FS:Class = getDefinitionByName("flash.filesystem.FileStream") as Class;
+      var s:* = new FS();
+      s.open(f,"read");
+      var text:String = s.readUTFBytes(s.bytesAvailable);
+      s.close();
+      f.deleteFile();
+      queue = [];
+      results = [];
+      var parts:Array = text.split("\n");
+      for(var i:int = 0; i < parts.length; i++)
+      {
+         var p:String = RGPage.clean(parts[i]);
+         if(p != "")
+         {
+            queue.push(p);
+         }
+      }
+      RGALog.write("remote: " + queue.length + " commands");
+   }
+
+   private static function run(cmd:String, doc:Doc) : String
+   {
+      var sp:int = cmd.indexOf(" ");
+      var verb:String = sp < 0 ? cmd : cmd.substr(0,sp);
+      var arg:String = sp < 0 ? "" : cmd.substr(sp + 1);
+      var l:DocLine;
+      if(verb == "static")
+      {
+         // static <class> <field>: the value of a static field of a game class, for research.
+         var cf:Array = arg.split(" ");
+         return String(getDefinitionByName(cf[0])[cf[1]]);
+      }
+      if(verb == "wait")
+      {
+         waitTicks = int(arg);
+         return "ok";
+      }
+      if(verb == "dump")
+      {
+         RGADump.dump(arg);
+         RGPage.dump(doc.lines,arg);
+         return doc.lines.length + " lines";
+      }
+      if(verb == "click")
+      {
+         var xy:Array = arg.split(" ");
+         RGPage.tap(Number(xy[0]),Number(xy[1]));
+         return "ok";
+      }
+      if(verb == "press" || verb == "presskey")
+      {
+         l = find(doc,arg,verb == "presskey",true);
+         if(l == null)
+         {
+            return "NOT FOUND";
+         }
+         try
+         {
+            if(l.target != null)
+            {
+               l.action(l.target,false,false);
+            }
+            else
+            {
+               l.action(false,false);
+            }
+         }
+         catch(err:Error)
+         {
+            return "FAILED on " + l.text + ": " + err.message;
+         }
+         return "pressed " + l.text + " [" + l.key + "]";
+      }
+      if(verb == "tip")
+      {
+         l = find(doc,arg,false,false);
+         if(l == null)
+         {
+            return "NOT FOUND";
+         }
+         return l.text + ": " + RGPage.tooltip(l.target).join(" | ");
+      }
+      return "unknown command";
+   }
+
+   private static function find(doc:Doc, what:String, byKey:Boolean, needAction:Boolean) : DocLine
+   {
+      what = what.toLowerCase();
+      for(var i:int = 0; i < doc.lines.length; i++)
+      {
+         var l:DocLine = DocLine(doc.lines[i]);
+         if(needAction && l.action == null)
+         {
+            continue;
+         }
+         if(byKey ? l.key.toLowerCase() == what : l.text.toLowerCase().indexOf(what) == 0)
+         {
+            return l;
+         }
+      }
+      return null;
+   }
+
+   private static function write(name:String, text:String) : void
+   {
+      var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
+      var FS:Class = getDefinitionByName("flash.filesystem.FileStream") as Class;
+      var s:* = new FS();
+      s.open(FileC["applicationStorageDirectory"].resolvePath(name),"write");
+      s.writeUTFBytes(text);
+      s.close();
+   }
+}

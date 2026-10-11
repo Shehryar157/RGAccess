@@ -41,10 +41,12 @@ class RGA
       {
          dumpTree();
       }
+      RGARemote.tick(doc);
    }
 
    private static var lastError:String = "";
    private static var lastPopup:String = "";
+   private static var lastToast:String = "";
 
    private static function dumpTree() : void
    {
@@ -64,6 +66,14 @@ class RGA
       try
       {
          doc.setLines(RGPage.build());
+         if(RGPage.toastText != lastToast)
+         {
+            lastToast = RGPage.toastText;
+            if(lastToast != "")
+            {
+               Speech.say(lastToast,false);
+            }
+         }
          if(RGPage.popupText != lastPopup)
          {
             lastPopup = RGPage.popupText;

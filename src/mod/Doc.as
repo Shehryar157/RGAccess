@@ -241,7 +241,7 @@ class Doc
       }
       catch(err:Error)
       {
-         Speech.say("Error: " + err.message);
+         Speech.say(err.message);
          return;
       }
       if(onAction != null)

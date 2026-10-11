@@ -29,8 +29,24 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - Building rows: the percent label is that building's share of total coin production. A row's `isEnabled` is simply cost <= coins.
 - `RGPage.click` hit-tests (`stage.hitTest(point, true)`) several points in the control and presses the first one where the control itself is on top; it logs every click, and what covered the centre, to rga_debug.log.
 
-## Open problem (2026-10-11)
-User could not buy the first Blacksmith with over 600 coins, though Farm and Inn bought fine. Cause unknown; read the `click` lines in rga_debug.log after the user retries.
+## Things on top of the game
+- Stage children after index 0. `1Z::!s` is the hover TOOLTIP (not a dialog; skipped). After every tap the mod hovers at -5000,-5000 so the tooltip closes.
+- A dialog (Offline Production `'?::"<`) comes with a full-screen stage `Quad` that swallows every click. The tutorial advisor uses a `Quad` inside the main screen the same way. `RGPage.click` detects this by hit test and throws "Blocked..." (spoken). This was the user's "cannot buy Blacksmith" problem.
+- `'?::8!L` (child of the main screen): notification banner, e.g. "You unlocked the trophy X". Spoken by RGA when its text changes (`RGPage.toastText`).
+
+## Lists (Upgrades, Trophies)
+- Panels: `]!6::>F` Upgrades (top buttons `4X::%!S` Abdication and `4X::59` Reincarnation, shown as ??? early), `]!6::8T` Trophies. Any other `]!6::` class gets the heading "Panel".
+- Inside is a Feathers GroupedList. Its `...DataViewPort` holds the rows in no fixed order; the page sorts them by y then x.
+- Section titles implement `IGroupedListHeaderRenderer` (class `1U::5X`): read as level 2 headings.
+- Rows extend `1U::?!\`` (upgrade `"#::7!B`, trophy `"#::>m`). Public `["[B"]()` is the title, `["@\""]()` the description (for upgrades its first line is "Cost: ..."), `data` is the item. `RGPage.isItem` detects rows by those two functions. A simulated click on an upgrade row buys it (confirmed with the free Crop Rotation).
+- A row the game draws half transparent (first child alpha below 1) is unaffordable (upgrade) or not yet earned (trophy): read as "cannot afford" or "locked".
+- PROBLEM, not solved: lists are virtual. Only rows on screen exist (Trophies shows about 20 of 903). Idea: the row's `data` setter only stores the value and calls `invalidate("data")`, so a row can be used as a probe: set `data` to another item of `list.dataProvider`, read title and description, set it back. To press an off-screen item, scroll the list to it first.
+- `"#::>W` at the bottom of the Upgrades panel: faction coin counters. Public field `@e` is the faction number; names come from the static array `-D`.`45` (Fairy, Elven, Angel, Goblin, Undead, Demon, Titan, Druid, Faceless, Dwarven, Drow, Mercenary, Dragon, Archon...). `-D`.`]!4` holds event item names (Snowballs, Hearts...).
+- `'?::[[`: the list's scroll bar, made of thin unlabeled Buttons (skipped).
+
+## Other main screen pieces found
+- `]!6::3!5`: spell bar. Spell buttons `"#::5W` with labels name and "N mana" (Tax Collection 200, Call to Arms 400). Heading "Spells".
+- `"#::9!`: building pictures on the realm, `touchable = false` (skipped as decoration). `"#::%[`: Assistants figures on the realm, six identical controls (read once).
 
 ## Not yet explored
-Upgrades, Trophies, Events and Spells screens; faction choice; abdication; options; stats; scroll containers whose contents are off screen; whether simulated clicks honour Control and Shift.
+Events, the Mana/Spells button, Shop, Statistics, Options, Scrying, Kong; faction choice; abdication; options; stats; scroll containers whose contents are off screen; whether simulated clicks honour Control and Shift.

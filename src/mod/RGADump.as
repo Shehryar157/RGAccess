@@ -23,13 +23,13 @@ class RGADump
       return false;
    }
 
-   public static function dump() : void
+   public static function dump(name:String = "") : void
    {
       var out:Array = [];
       walk(Starling.current.stage,0,out);
       var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
       var FS:Class = getDefinitionByName("flash.filesystem.FileStream") as Class;
-      var f:* = FileC["applicationStorageDirectory"].resolvePath("rga_tree.txt");
+      var f:* = FileC["applicationStorageDirectory"].resolvePath("rga_tree" + (name == "" ? "" : "_" + name) + ".txt");
       var s:* = new FS();
       s.open(f,"write");
       s.writeUTFBytes(out.join("\r\n"));

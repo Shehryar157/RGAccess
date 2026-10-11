@@ -61,7 +61,7 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 
 ## Screens explored 2026-10-11 (second session), all through the remote
 - Statistics `1Z::8!-`: three Radios (This Era, This Reincarnation, All Time) and a GroupedList `'?::=!4` with groups Production, Time, Spells, Factions. Each group has ONE row (`"#::+!G`, an IGroupedListItemRenderer that is not `isItem`) holding many Labels. `walkList` reads such rows as one text line per label. Section titles `1U::5X` also pass `isItem`, so `findRow` must never borrow one (that was the "no numbers" bug).
-- Options `1Z::?K`: Radios and about 30 Checks (read as "radio button/check box, checked/not checked" from `isSelected`, via `DocLine.role`), buttons Language, Audio, Overwrite, Restore, Save, Export, Import, templates, Hard Reset (never press), Community. No sliders or text inputs. Language and Audio sub-dialogs not opened.
+- Options `1Z::?K`: Radios and about 30 Checks (read as "radio button/check box, checked/not checked" from `isSelected`, via `DocLine.role`), buttons Language, Audio, Overwrite, Restore, Save, Export, Import, templates, Hard Reset (never press), Community. No sliders or text inputs. Language and Audio sub-dialogs: see "Dialogs on dialogs".
 - Shop: title, description and price buttons per product; reads well as is. Real money, never press.
 - Scrying: a dialog that only says it is unavailable on this platform.
 - Events panel `]!6::@h`: "No event is currently running". Untested with a live event.
@@ -80,7 +80,7 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - After a tap the hover tooltip `1Z::!s` sometimes stays open and is touchable, so it covered the spell buttons and `click` said "Blocked". `click` now sets every open tooltip `touchable = false` first, and `RGA.onResult` calls `RGPage.hoverAway()` 300 ms after a press. Casting Tax Collection through an open tooltip confirmed (mana 1000 to 808).
 
 ## Still open
-- Events with a live event; Language and Audio sub-dialogs; Reincarnation dialog (still ??? in this save); other scroll containers with off-screen content (none met so far); Shift press proof.
+- Events with a live event; Reincarnation dialog (still ??? in this save); other scroll containers with off-screen content (none met so far); Shift press proof.
 - `remote.py start` does not run commands given after it; send them in a second call.
 - Tooltip and Label lines pass through `RGPage.keys`: only CTRL+Click, SHIFT+Click and CTRL+SHIFT+Click become Control Enter, Shift Enter, Control Shift Enter. Plain "click" is left as the game wrote it (user asked to undo the "Press Enter" rewrite, 2026-10-11).
 - Tips and Hints `4X::^C`: pressing it does nothing; the current hint is its tooltip (T). On 2026-10-11 it said: gather 20 faction coins of one faction and sign a Trade Treaty with them.
@@ -88,3 +88,8 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 ## Tooltip keys (changed 2026-10-11, late)
 - T speaks the whole tooltip of the current line and opens nothing. Shift+T speaks it and opens it as a page (the old T behaviour); Escape closes. `RGA.showTooltip(open)`. The user asked for this split.
 - NOT tested: the remote cannot type keys, only press lines. Ask the user how T and Shift+T behave.
+
+## Dialogs on dialogs (explored 2026-10-11)
+- A dialog opened from another one (Options, then Language or Audio) is a higher stage child of class `'?::"<`. `RGPage.build` gives every open dialog its own "dialog" heading, top one first (key `h:dialog`, lower ones `h:dialog#n`), and `popupText` is the top dialog only. So opening Language says "Dialog. Language" and closing it says "Dialog. Options" again. Verified in the speech log.
+- Language: seven `feathers.controls::ToggleButton` (English, Español, Deutsch, Français, Português (Brasil), Pусский, Italiano). The chosen one reads "button, selected" (`isSelected`). Not pressed: it would change the user's game language.
+- Audio: Check "Mute", Label "Volume: 50%", and a `feathers.controls::Slider`. The slider becomes two lines, "Volume lower" and "Volume higher" (`RGPage.slide`, one tenth of the range, sets `value`; the game reacts and the label updates). Verified 50 -> 60 -> 50. Each press re-announces "Dialog. Audio Volume: 60%" because the dialog text changed. Any other Slider gets the same treatment, named after the text line before it.

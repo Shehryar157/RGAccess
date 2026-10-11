@@ -39,6 +39,7 @@ class RGPage
       var i:int;
       var j:int;
       var cont:DocLine = null;
+      var topName:String = "";
       counts = new Object();
       manaDone = false;
       lastCls = "";
@@ -55,22 +56,34 @@ class RGPage
          {
             continue;
          }
+         dialogName = "";
          walk(top,part);
          if(part.length > 0)
          {
             var hasButton:Boolean = false;
+            // Only the dialog on top is announced; one opened from another (Options, then Language) hides the first.
+            var first:Boolean = pop.length == 0;
             for(j = 0; j < part.length; j++)
             {
                if(DocLine(part[j]).isButton)
                {
                   hasButton = true;
-                  names.push(DocLine(part[j]).text);
+                  if(first)
+                  {
+                     names.push(DocLine(part[j]).text);
+                  }
                }
-               else
+               else if(first)
                {
                   said.push(DocLine(part[j]).text);
                }
             }
+            if(first)
+            {
+               topName = dialogName;
+            }
+            // Every open dialog gets its own heading, the one on top first.
+            pop.push(new DocLine(dialogName == "" ? "Dialog" : dialogName + " dialog","h1",first ? "h:dialog" : nextKey("h:dialog")));
             if(!hasButton)
             {
                // A message you dismiss by clicking it, like the advisor.
@@ -84,16 +97,12 @@ class RGPage
       }
       // A dialog without any text, like the buy amount chooser, is announced by its buttons.
       popupText = said.length > 0 ? said.join(" ") : names.join(", ");
-      if(dialogName != "")
+      if(topName != "")
       {
          // Statistics and Options are long and their numbers keep changing: announce the name only.
-         popupText = dialogName;
+         popupText = topName;
       }
-      if(pop.length > 0)
-      {
-         out.push(new DocLine(dialogName == "" ? "Dialog" : dialogName + " dialog","h1","h:dialog"));
-         out = out.concat(pop);
-      }
+      out = out.concat(pop);
       var mainAt:int = out.length;
       if(stage.numChildren > 0)
       {
@@ -188,6 +197,23 @@ class RGPage
       }
       if(obj is GroupedList && walkList(GroupedList(obj),out))
       {
+         return;
+      }
+      if(cls.indexOf("::Slider") > 0)
+      {
+         // A slider is dragged with the mouse; give it a lower and a higher button instead.
+         // It is named after the text before it ("Volume: 50%"), which also shows the new value.
+         var sn:String = "Slider";
+         if(out.length > 0 && !DocLine(out[out.length - 1]).isButton)
+         {
+            sn = DocLine(out[out.length - 1]).text.split(":")[0];
+         }
+         var lower:DocLine = new DocLine(sn + " lower","button",nextKey("slider-"),slideDown);
+         lower.target = obj;
+         out.push(lower);
+         var higher:DocLine = new DocLine(sn + " higher","button",nextKey("slider+"),slideUp);
+         higher.target = obj;
+         out.push(higher);
          return;
       }
       if((obj is §6+§ || obj is Button || isItem(obj)) && (c == null || !hasControl(c)))
@@ -632,6 +658,11 @@ class RGPage
       {
          l.role = o["isSelected"] ? "radio button, checked" : "radio button, not checked";
       }
+      // One of a row of choices that stays pressed, like the current language.
+      if(cls.indexOf("::ToggleButton") > 0 && o["isSelected"])
+      {
+         l.role = "button, selected";
+      }
       if(cls == MANA)
       {
          // The mana orb only shows amounts; "Spells" under it is the caption of the spell bar.
@@ -869,6 +900,25 @@ class RGPage
    }
 
    // The realm is the big background; click near its top left, away from any dialog.
+   public static function slideDown(target:Object, ctrl:Boolean, shift:Boolean) : void
+   {
+      slide(target,-1);
+   }
+
+   public static function slideUp(target:Object, ctrl:Boolean, shift:Boolean) : void
+   {
+      slide(target,1);
+   }
+
+   // Move a slider one tenth of its range; setting the value tells the game, as dragging would.
+   private static function slide(target:Object, dir:int) : void
+   {
+      var lo:Number = Number(target["minimum"]);
+      var hi:Number = Number(target["maximum"]);
+      var v:Number = Number(target["value"]) + dir * (hi - lo) / 10;
+      target["value"] = Math.max(lo,Math.min(hi,v));
+   }
+
    public static function clickRealm(target:Object, ctrl:Boolean, shift:Boolean) : void
    {
       var r:Rectangle = DisplayObject(target).getBounds(Starling.current.stage);

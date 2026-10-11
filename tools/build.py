@@ -19,15 +19,16 @@ BUILD = os.path.join(ROOT, "build")
 PYTHONW = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
 
 
-def bundle():
-    """Main.as + generated config + every src/mod/*.as, with their imports hoisted together."""
+def bundle(only=None):
+    """Main.as + generated config + every src/mod/*.as, with their imports hoisted together.
+    only: optional list of src/mod file names (without .as) to include, for smoke tests."""
     main = open(os.path.join(ROOT, "src", "scripts", "Main.as"), encoding="utf-8").read()
     imports, bodies = [], []
     config = 'class RGAConfig\n{\n   public static const PYTHONW:String = "%s";\n}\n' % PYTHONW.replace("\\", "\\\\")
     bodies.append(config)
     mod_dir = os.path.join(ROOT, "src", "mod")
     for name in sorted(os.listdir(mod_dir)):
-        if name.endswith(".as"):
+        if name.endswith(".as") and (only is None or name[:-3] in only):
             text = open(os.path.join(mod_dir, name), encoding="utf-8").read()
             for line in text.splitlines():
                 if re.match(r"\s*import\s", line):

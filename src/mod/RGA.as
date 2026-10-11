@@ -8,10 +8,13 @@ import flash.utils.getDefinitionByName;
 class RGA
 {
    public static const VERSION:String = "0.1";
-   private static var doc:Doc = new Doc();
+   // Created in start(), not here: code that runs while the classes are still being defined
+   // can make the whole game fail to load.
+   private static var doc:Doc = null;
 
    public static function start(stage:Stage) : void
    {
+      doc = new Doc();
       var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
       var helperDir:String = FileC["applicationDirectory"].nativePath + "\\RGAccess";
       RGALog.write("RGA " + VERSION + " starting, helper " + helperDir);
@@ -23,12 +26,17 @@ class RGA
       stage.addEventListener(KeyboardEvent.KEY_DOWN,onKey,false,1000);
       doc.onAction = refresh;
       var t:Timer = new Timer(1000);
-      t.addEventListener(TimerEvent.TIMER,function(e:TimerEvent):void
-      {
-         refresh();
-      });
+      t.addEventListener(TimerEvent.TIMER,onTick);
       t.start();
    }
+
+   // A named function, not an inline one: JPEXS miscompiles inline functions (VerifyError).
+   private static function onTick(e:TimerEvent) : void
+   {
+      refresh();
+   }
+
+   private static var lastError:String = "";
 
    private static function refresh() : void
    {
@@ -39,6 +47,12 @@ class RGA
       catch(e:Error)
       {
          // The game may not be fully loaded yet; try again next tick.
+         // Log each different error once, so a real bug doesn't hide here.
+         if(e.message != lastError)
+         {
+            lastError = e.message;
+            RGALog.write("page build failed: " + e.getStackTrace());
+         }
       }
    }
 

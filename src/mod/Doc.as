@@ -52,7 +52,8 @@ class DocLine
 // A virtual web page: lines of text with a cursor and selection, read like NVDA browse mode.
 class Doc
 {
-   public var lines:Array = [new DocLine("Loading", "text", "loading")];
+   // Filled in the constructor: JPEXS miscompiles "new" in a field's default value (VerifyError).
+   public var lines:Array;
    public var line:int = 0;
    public var col:int = 0;
    // Selection anchor: where Shift-selection started. -1 means no selection.
@@ -60,6 +61,12 @@ class Doc
    private var aCol:int = 0;
    // Called after Enter runs an action, so the page can rebuild right away.
    public var onAction:Function = null;
+
+   public function Doc()
+   {
+      super();
+      lines = [new DocLine("Loading","text","loading")];
+   }
 
    private function cur() : DocLine
    {

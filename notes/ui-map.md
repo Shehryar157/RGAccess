@@ -82,9 +82,8 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 ## Still open
 - Events with a live event; Language and Audio sub-dialogs; Reincarnation dialog (still ??? in this save); other scroll containers with off-screen content (none met so far); Shift press proof.
 - `remote.py start` does not run commands given after it; send them in a second call.
-- Tooltip lines pass through `RGPage.keys`: CTRL+Click, SHIFT+Click and the whole word Click become Control Enter, Shift Enter and Press Enter ("Clicking Reward" stays).
-- `RGPage.keys` is also applied to every Label (dialogs, panels), not only tooltips; "Click this button" becomes "Press Enter on this button". It is NOT inside `clean`, because the remote uses `clean` on its commands ("click x y").
-- Tips and Hints `4X::^C`: pressing it does nothing; the current hint is its tooltip (T). On 2026-10-11 it said: gather 20 faction coins of one faction and sign a Trade Treaty with them. The dialog wording change is unverified live (no dialog containing "click" was open); the same function is verified on tooltips.
+- Tooltip and Label lines pass through `RGPage.keys`: only CTRL+Click, SHIFT+Click and CTRL+SHIFT+Click become Control Enter, Shift Enter, Control Shift Enter. Plain "click" is left as the game wrote it (user asked to undo the "Press Enter" rewrite, 2026-10-11).
+- Tips and Hints `4X::^C`: pressing it does nothing; the current hint is its tooltip (T). On 2026-10-11 it said: gather 20 faction coins of one faction and sign a Trade Treaty with them.
 
 ## Tooltip keys (changed 2026-10-11, late)
 - T speaks the whole tooltip of the current line and opens nothing. Shift+T speaks it and opens it as a page (the old T behaviour); Escape closes. `RGA.showTooltip(open)`. The user asked for this split.

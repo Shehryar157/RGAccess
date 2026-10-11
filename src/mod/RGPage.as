@@ -781,13 +781,6 @@ class RGPage
       s = s.replace(new RegExp("CTRL\\+SHIFT\\+Click","gi"),"Control Shift Enter");
       s = s.replace(new RegExp("CTRL\\+Click","gi"),"Control Enter");
       s = s.replace(new RegExp("SHIFT\\+Click","gi"),"Shift Enter");
-      // "Click this button" and "Click on the X" become "Press Enter on ...".
-      s = s.replace(new RegExp("\\b([Cc])lick on\\b","g"),"$1lick");
-      s = s.replace(new RegExp("\\bClick (this|the|a|an|any|your)\\b","g"),"Press Enter on $1");
-      s = s.replace(new RegExp("\\bclick (this|the|a|an|any|your)\\b","g"),"press Enter on $1");
-      // "Coins per Click" in the statistics is a name, not an instruction.
-      s = s.replace(new RegExp("(?<!per )\\bClick\\b","g"),"Press Enter");
-      s = s.replace(new RegExp("\\bclick\\b","g"),"press Enter");
       return s;
    }
 

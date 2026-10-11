@@ -67,6 +67,9 @@ class Doc
    public var onAction:Function = null;
    // Where the cursor was before visit() moved it, or null.
    public var backKey:String = null;
+   // A heading goTo() is waiting for, and how many more page rebuilds it waits.
+   private var wantKey:String = null;
+   private var wantTries:int = 0;
 
    public function Doc()
    {
@@ -96,6 +99,25 @@ class Doc
          {
             line = i;
             break;
+         }
+      }
+      if(wantKey != null)
+      {
+         // A section goTo() asked the game to open: move to it once it is there.
+         for(i = 0; i < lines.length; i++)
+         {
+            if(DocLine(lines[i]).key == wantKey)
+            {
+               line = i;
+               col = 0;
+               aLine = -1;
+               wantTries = 0;
+               break;
+            }
+         }
+         if(--wantTries <= 0)
+         {
+            wantKey = null;
          }
       }
       if(line < 0 && backKey != null)
@@ -200,6 +222,26 @@ class Doc
          jumpToKey("h:resources","No resources on this screen");
          return true;
       }
+      if(k == 80 && !ctrl) // P: the Spells section
+      {
+         jumpToKey("h:]!6::3!5","No spells on this screen");
+         return true;
+      }
+      if(k == 85 && !ctrl) // U: the Upgrades panel, opened first if it is closed
+      {
+         goTo("h:]!6::>F","","\"#:: !D#0","Upgrades");
+         return true;
+      }
+      if(k == 83 && !ctrl) // S: the Statistics dialog, opened first if it is closed
+      {
+         goTo("","Statistics dialog","4X::9P#0","Statistics");
+         return true;
+      }
+      if(k == 79 && !ctrl) // O: the Options dialog, opened first if it is closed
+      {
+         goTo("","Options dialog","4X::2!Z#0","Options");
+         return true;
+      }
       if(k == 9) // Tab / Shift+Tab
       {
          jump(shift ? -1 : 1,"isButton","button");
@@ -259,9 +301,49 @@ class Doc
       Speech.say(missing);
    }
 
+   // Move to a section's heading (found by its key, or by its text when it has no key of its
+   // own, like a dialog). When the section is closed, press the button that opens it instead:
+   // a dialog takes the cursor by itself, a panel through wantKey.
+   private function goTo(headKey:String, headText:String, buttonKey:String, name:String) : void
+   {
+      var i:int;
+      var l:DocLine;
+      for(i = 0; i < lines.length; i++)
+      {
+         l = lines[i];
+         if(l.key == headKey || l.isHeading && l.text == headText)
+         {
+            line = i;
+            col = 0;
+            aLine = -1;
+            readCurrent();
+            return;
+         }
+      }
+      for(i = 0; i < lines.length; i++)
+      {
+         l = lines[i];
+         if(l.key == buttonKey && l.action != null)
+         {
+            if(headKey != "")
+            {
+               wantKey = headKey;
+               wantTries = 5;
+            }
+            press(l,false,false);
+            return;
+         }
+      }
+      Speech.say(name + " is not on this screen");
+   }
+
    private function activate(ctrl:Boolean, shift:Boolean) : void
    {
-      var l:DocLine = cur();
+      press(cur(),ctrl,shift);
+   }
+
+   private function press(l:DocLine, ctrl:Boolean, shift:Boolean) : void
+   {
       if(l.action == null)
       {
          return;

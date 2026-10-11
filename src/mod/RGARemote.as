@@ -96,6 +96,16 @@ class RGARemote
          RGPage.dump(doc.lines,arg);
          return doc.lines.length + " lines, list read in " + RGPage.listMs + " ms";
       }
+      if(verb == "key" || verb == "where")
+      {
+         // key <code>: type a key on the page (80 = P), as the keyboard would; where: no key.
+         // Both answer with the line the cursor is on, so cursor moves can be tested.
+         if(verb == "key")
+         {
+            doc.handleKey(new KeyboardEvent(KeyboardEvent.KEY_DOWN,true,false,0,int(arg)));
+         }
+         return "cursor: " + DocLine(doc.lines[doc.line]).text;
+      }
       if(verb == "click")
       {
          var xy:Array = arg.split(" ");

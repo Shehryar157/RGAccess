@@ -234,6 +234,8 @@ class RGA
       l.push(new DocLine("Shift with any movement key: select text. Control C copies, Control A selects all.","text","k:sel"));
       l.push(new DocLine("H and Shift H: next or previous heading.","text","k:h"));
       l.push(new DocLine("R: jump to Resources (coins, production, gems, rubies, mana).","text","k:r"));
+      l.push(new DocLine("P: jump to Spells. U: jump to Upgrades, opening the panel if it is closed.","text","k:pu"));
+      l.push(new DocLine("S: open Statistics. O: open Options. If it is already open, jump to its top.","text","k:so"));
       l.push(new DocLine("Tab and Shift Tab: next or previous button.","text","k:tab"));
       l.push(new DocLine("Enter or Space: press the button you are on.","text","k:enter"));
       l.push(new DocLine("T: read the whole tooltip of the button you are on. Shift T: open the tooltip as a page to read line by line; Escape closes it.","text","k:tip"));

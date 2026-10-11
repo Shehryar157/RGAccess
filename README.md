@@ -4,16 +4,6 @@ A screen reader mod for [Realm Grinder](https://store.steampowered.com/app/61008
 
 The mod is for the Steam version on Windows. It is unofficial and not made or endorsed by the game's developers.
 
-## Contents
-
-- [What works](#what-works)
-- [What does not work](#what-does-not-work)
-- [Known bugs](#known-bugs)
-- [How to install](#how-to-install)
-- [Keys](#keys)
-- [How it works: for the technically minded](#how-it-works-for-the-technically-minded)
-- [Help: learning the game](#help-learning-the-game)
-
 ## What works
 
 - The main screen as a page: resources (coins, production, gems, rubies, mana), the toolbar, buildings, spells, and whatever is open on the left.
@@ -72,6 +62,10 @@ Windows may warn about the setup because it is not signed. Choose "More info", t
 - Shift with any movement key: select text. Control C copies, Control A selects all.
 - H and Shift H: next or previous heading.
 - R: jump to Resources.
+- P: jump to Spells.
+- U: jump to Upgrades. If the panel is closed, it is opened first.
+- S: open Statistics. If it is already open, jump to its top.
+- O: open Options. If it is already open, jump to its top.
 - Tab and Shift Tab: next or previous button.
 - Enter or Space: press the button you are on.
 - T: read the whole tooltip of the button you are on.

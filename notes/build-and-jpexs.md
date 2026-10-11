@@ -21,3 +21,13 @@ Bash heredocs choke on the scrambled names (the section-sign and quote character
 
 ## Regular expressions
 - In ActionScript a pattern needs doubled backslashes: `new RegExp(", (\\S+) owned")`. Twice a scripted edit (Python in a Bash heredoc) wrote a single backslash, which compiles but never matches. After any scripted edit, grep the line and check it; fix with the Edit tool.
+
+## Release and installer (added 2026-10-11)
+- `python tools/build_release.py` builds `dist/RGAccess-Setup.exe` (13 MB). Version comes from the `VERSION` file (also compiled in as `RGAConfig.VERSION`).
+- The installer does not carry the game's SWF: it carries a 31 KB patch (`installer/patch.py`, differences between the unpacked bodies) and rebuilds the modded SWF from the player's file. It checks the SHA-256 of the game's file and refuses an unknown one, so a game update needs a new release.
+- The installer keeps the untouched SWF as `RealmGrinderDesktop.swf.before-rgaccess` and writes `version.txt` and `swf.sha256` into `<game>\RGAccess`.
+- Installed mod runs `rga_speech.exe` (PyInstaller); a source build still uses pythonw + `rga_speech.py`. `Speech.as` picks the exe when it exists.
+- On this computer the game holds a source build, which the installer refuses. To try the installer on the real game: close the game, `python tools/build.py --restore`, then run the setup.
+- Testing without the game: `python installer/setup.py --silent --no-update --game <scratch folder with the original SWF and an empty RealmGrinderDesktop.exe>`. `--silent` skips the "game is running" check.
+- Tested 2026-10-11: scratch install, reinstall, refusal of a changed file, packed helper finds NVDA. NOT tested: the windows (progress, update dialog), the uninstaller, the update download (needs a published release), the release build inside the real game.
+- Updater expects repo `Shehryar157/RGAccess` (public), release tag `v<version>`, asset `RGAccess-Setup.exe`; release description = "what's new".

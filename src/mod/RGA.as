@@ -102,6 +102,7 @@ class RGA
       l.push(new DocLine("Home and End: start or end of the line. With Control: top or bottom of the page.","text","k:he"));
       l.push(new DocLine("Shift with any movement key: select text. Control C copies, Control A selects all.","text","k:sel"));
       l.push(new DocLine("H and Shift H: next or previous heading.","text","k:h"));
+      l.push(new DocLine("R: jump to Resources (coins, production, gems, rubies, mana).","text","k:r"));
       l.push(new DocLine("Tab and Shift Tab: next or previous button.","text","k:tab"));
       l.push(new DocLine("Enter or Space: press the button you are on.","text","k:enter"));
       l.push(new DocLine("T: read the tooltip of the button you are on. It opens as a page; Escape closes it.","text","k:tip"));

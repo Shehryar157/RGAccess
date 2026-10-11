@@ -1,11 +1,13 @@
 import feathers.controls.Button;
 import feathers.controls.Label;
+import flash.geom.Point;
 import flash.geom.Rectangle;
 import flash.utils.getDefinitionByName;
 import flash.utils.getQualifiedClassName;
 import starling.core.Starling;
 import starling.display.DisplayObject;
 import starling.display.DisplayObjectContainer;
+import starling.display.Image;
 import §"#§.§[!2§;
 import §1U§.§6+§;
 
@@ -21,6 +23,8 @@ class RGPage
    // Text of the dialogs that are open, so RGA can speak a new one when it appears.
    public static var popupText:String = "";
    private static var counts:Object = null;
+   // True once the mana orb has been listed under Resources, so it is not listed twice.
+   private static var manaDone:Boolean = false;
 
    public static function build() : Array
    {
@@ -30,6 +34,7 @@ class RGPage
       var i:int;
       var j:int;
       counts = new Object();
+      manaDone = false;
       var stage:DisplayObjectContainer = Starling.current.stage;
       // Everything on the stage after the first child is a dialog on top of the game.
       for(i = stage.numChildren - 1; i >= 1; i--)
@@ -94,13 +99,17 @@ class RGPage
       }
       var c:DisplayObjectContainer = obj as DisplayObjectContainer;
       var cls:String = getQualifiedClassName(obj);
+      if(cls == MANA && manaDone)
+      {
+         return;
+      }
       if((obj is §6+§ || obj is Button) && (c == null || !hasControl(c)))
       {
          out.push(controlLine(obj,cls));
          return;
       }
       var head:String = sectionName(cls);
-      if(head != "")
+      if(head != "" && cls != STATUS)
       {
          out.push(new DocLine(head,"h1","h:" + cls));
       }
@@ -114,10 +123,77 @@ class RGPage
       {
          return;
       }
-      for(var i:int = 0; i < c.numChildren; i++)
+      var i:int;
+      if(cls == STATUS && c.numChildren > 0)
+      {
+         // The status bar is two groups: the amounts, then the icon buttons.
+         // The mana orb lives elsewhere on screen but is a resource too, so it is read here.
+         out.push(new DocLine("Resources","h1","h:resources"));
+         walk(c.getChildAt(0),out);
+         var sib:DisplayObjectContainer = obj.parent;
+         for(i = 0; sib != null && i < sib.numChildren; i++)
+         {
+            if(getQualifiedClassName(sib.getChildAt(i)) == MANA)
+            {
+               walk(sib.getChildAt(i),out);
+               manaDone = true;
+            }
+         }
+         out.push(new DocLine("Toolbar","h1","h:toolbar"));
+         for(i = 1; i < c.numChildren; i++)
+         {
+            walk(c.getChildAt(i),out);
+         }
+         return;
+      }
+      for(i = 0; i < c.numChildren; i++)
       {
          walk(c.getChildAt(i),out);
       }
+   }
+
+   private static var STATUS:String = "]!6::+r";
+   private static var MANA:String = "]!6::7R";
+
+   // Names for buttons that are only a picture: no text and no tooltip title.
+   // Found from the picture each class loads (UIShop, BGView, UIAudio, UICog) and the dialog it opens.
+   private static function iconName(obj:DisplayObject, cls:String) : String
+   {
+      if(cls == "4X::=!_")
+      {
+         return "Shop";
+      }
+      if(cls == "4X::+Y")
+      {
+         return "Hide interface";
+      }
+      if(cls == "4X::9P")
+      {
+         return "Statistics";
+      }
+      if(cls == "4X::2!Z")
+      {
+         return "Options";
+      }
+      if(cls == "4X::<!w")
+      {
+         // Two pictures, speaker and crossed-out speaker; the game shows one of them.
+         var c:DisplayObjectContainer = obj as DisplayObjectContainer;
+         var seen:int = 0;
+         for(var i:int = 0; c != null && i < c.numChildren; i++)
+         {
+            if(c.getChildAt(i) is Image)
+            {
+               seen++;
+               if(seen == 2)
+               {
+                  return c.getChildAt(i).visible ? "Sound, off" : "Sound, on";
+               }
+            }
+         }
+         return "Sound on or off";
+      }
+      return "";
    }
 
    // Our names for the main screen's panels, which have no visible title of their own.
@@ -139,9 +215,9 @@ class RGPage
       {
          return "Menu";
       }
-      if(cls == "]!6::+r")
+      if(cls == STATUS)
       {
-         return "Status bar";
+         return "Resources";
       }
       if(cls == "]!6::7R")
       {
@@ -160,7 +236,7 @@ class RGPage
       if(obj is §[!2§ && labels.length >= 4)
       {
          kind = "building";
-         text = labels[0] + ", " + labels[3] + " owned, costs " + labels[1] + ", " + labels[2];
+         text = labels[0] + ", " + labels[3] + " owned, costs " + labels[1] + ", " + labels[2] + " of production";
       }
       else
       {
@@ -169,6 +245,15 @@ class RGPage
             labels.unshift(title);
          }
          text = labels.join(", ");
+         if(cls == "4X::2!C")
+         {
+            // Not a purchase: it changes how many buildings one press buys.
+            text = "Buy amount, " + text;
+         }
+      }
+      if(text == "")
+      {
+         text = iconName(obj,cls);
       }
       if(text == "" && obj is Button)
       {
@@ -317,8 +402,62 @@ class RGPage
    // Enter on a button: a pretend mouse click in the middle of the control.
    public static function click(target:Object, ctrl:Boolean, shift:Boolean) : void
    {
-      var r:Rectangle = DisplayObject(target).getBounds(Starling.current.stage);
+      var d:DisplayObject = DisplayObject(target);
+      var r:Rectangle = d.getBounds(Starling.current.stage);
+      // Ask the engine what is on top at a few points inside the control, and press the
+      // first point where that is the control itself. Something else may cover its centre.
+      var fx:Array = [0.5,0.25,0.75,0.5,0.5,0.1,0.9,0.1,0.9];
+      var fy:Array = [0.5,0.5,0.5,0.25,0.75,0.15,0.15,0.85,0.85];
+      var cover:String = "";
+      for(var i:int = 0; i < fx.length; i++)
+      {
+         var x:Number = r.x + r.width * fx[i];
+         var y:Number = r.y + r.height * fy[i];
+         var hit:DisplayObject = Starling.current.stage.hitTest(new Point(x,y),true);
+         if(hit != null && inside(hit,d))
+         {
+            RGALog.write("click " + getQualifiedClassName(d) + " at " + int(x) + "," + int(y) + state(d) + (i > 0 ? ", centre covered by " + cover : ""));
+            tap(x,y);
+            return;
+         }
+         if(i == 0)
+         {
+            cover = hit == null ? "nothing touchable" : path(hit);
+         }
+      }
+      RGALog.write("click " + getQualifiedClassName(d) + " COVERED everywhere by " + cover + state(d) + ", bounds " + r);
       tap(r.x + r.width / 2,r.y + r.height / 2);
+   }
+
+   private static function state(d:Object) : String
+   {
+      return d.hasOwnProperty("isEnabled") ? (d["isEnabled"] ? ", enabled" : ", DISABLED") : "";
+   }
+
+   // True if obj is box or sits somewhere inside it.
+   private static function inside(obj:DisplayObject, box:DisplayObject) : Boolean
+   {
+      while(obj != null)
+      {
+         if(obj == box)
+         {
+            return true;
+         }
+         obj = obj.parent;
+      }
+      return false;
+   }
+
+   // Class names from obj up to the screen, for the log.
+   private static function path(obj:DisplayObject) : String
+   {
+      var a:Array = [];
+      while(obj != null && a.length < 5)
+      {
+         a.push(getQualifiedClassName(obj));
+         obj = obj.parent;
+      }
+      return a.join(" < ");
    }
 
    // The realm is the big background; click near its top left, away from any dialog.

@@ -157,6 +157,11 @@ class Doc
          jump(shift ? -1 : 1,"building","building");
          return true;
       }
+      if(k == 82 && !ctrl) // R: the Resources section
+      {
+         jumpToKey("h:resources","No resources on this screen");
+         return true;
+      }
       if(k == 9) // Tab / Shift+Tab
       {
          jump(shift ? -1 : 1,"isButton","button");
@@ -197,6 +202,23 @@ class Doc
          }
       }
       Speech.say(dir > 0 ? "No next " + name : "No previous " + name);
+   }
+
+   // Move to the one line with this key, wherever it is on the page.
+   private function jumpToKey(key:String, missing:String) : void
+   {
+      for(var i:int = 0; i < lines.length; i++)
+      {
+         if(DocLine(lines[i]).key == key)
+         {
+            line = i;
+            col = 0;
+            aLine = -1;
+            readCurrent();
+            return;
+         }
+      }
+      Speech.say(missing);
    }
 
    private function activate(ctrl:Boolean, shift:Boolean) : void

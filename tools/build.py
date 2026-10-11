@@ -14,17 +14,24 @@ GAME = r"D:\Steam\steamapps\common\Realm Grinder"
 ORIGINAL = os.path.join(ROOT, "original", "RealmGrinderDesktop.swf")
 JAVA = os.path.join(ROOT, "tools", "jdk-21.0.12.1+1-jre", "bin", "java.exe")
 FFDEC = os.path.join(ROOT, "tools", "ffdec", "ffdec-cli.jar")
-FFC_NATIVE = r"E:\code\mods\FFCAccess\native"
+NATIVE = os.path.join(ROOT, "native")     # Tolk and the screen reader DLLs it uses
 BUILD = os.path.join(ROOT, "build")
 PYTHONW = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
 
 
-def bundle(only=None):
+VERSION = open(os.path.join(ROOT, "VERSION"), encoding="utf-8").read().strip()
+
+
+def bundle(only=None, release=False):
     """Main.as + generated config + every src/mod/*.as, with their imports hoisted together.
-    only: optional list of src/mod file names (without .as) to include, for smoke tests."""
+    only: optional list of src/mod file names (without .as) to include, for smoke tests.
+    release: for the installer, so this computer's Python path is left out (the installed
+    mod carries its speech helper as a program)."""
     main = open(os.path.join(ROOT, "src", "scripts", "Main.as"), encoding="utf-8").read()
     imports, bodies = [], []
-    config = 'class RGAConfig\n{\n   public static const PYTHONW:String = "%s";\n}\n' % PYTHONW.replace("\\", "\\\\")
+    config = ('class RGAConfig\n{\n   public static const PYTHONW:String = "%s";\n'
+              '   public static const VERSION:String = "%s";\n}\n'
+              % ("" if release else PYTHONW.replace("\\", "\\\\"), VERSION))
     bodies.append(config)
     mod_dir = os.path.join(ROOT, "src", "mod")
     for name in sorted(os.listdir(mod_dir)):
@@ -64,7 +71,7 @@ def deploy(swf):
     shutil.copy2(os.path.join(ROOT, "src", "helper", "rga_speech.py"), helper)
     for dll in ("Tolk.dll", "nvdaControllerClient64.dll", "SAAPI64.dll"):
         try:
-            shutil.copy2(os.path.join(FFC_NATIVE, dll), helper)
+            shutil.copy2(os.path.join(NATIVE, dll), helper)
         except PermissionError:
             pass  # the game is running and has the DLL open; it never changes anyway
     print("Built and installed into the game.")

@@ -6,3 +6,6 @@ build/
 original/
 *.swf
 save_backups/
+dist/
+__pycache__/
+*.pyc

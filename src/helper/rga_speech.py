@@ -14,7 +14,8 @@ import ctypes
 import os
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
+# Packed as a program (the installed mod), our folder is the program's, not this file's.
+HERE = os.path.dirname(os.path.abspath(sys.executable if getattr(sys, "frozen", False) else __file__))
 LOG = open(os.path.join(HERE, "rga_speech.log"), "w", encoding="utf-8", buffering=1)
 
 

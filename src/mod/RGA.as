@@ -7,7 +7,6 @@ import flash.utils.getDefinitionByName;
 // RGAccess entry point, called once from Main.init.
 class RGA
 {
-   public static const VERSION:String = "0.1";
    // Created in start(), not here: code that runs while the classes are still being defined
    // can make the whole game fail to load.
    private static var doc:Doc = null;
@@ -17,10 +16,10 @@ class RGA
       doc = new Doc();
       var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
       var helperDir:String = FileC["applicationDirectory"].nativePath + "\\RGAccess";
-      RGALog.write("RGA " + VERSION + " starting, helper " + helperDir);
+      RGALog.write("RGA " + RGAConfig.VERSION + " starting, helper " + helperDir);
       Speech.init(helperDir,RGAConfig.PYTHONW);
       RGALog.write("speech started");
-      Speech.say("RG Access " + VERSION + " loaded. Press F1 for help.");
+      Speech.say("RG Access " + RGAConfig.VERSION + " loaded. Press F1 for help.");
 
       // High priority so we see keys before the game does.
       stage.addEventListener(KeyboardEvent.KEY_DOWN,onKey,false,1000);
@@ -224,7 +223,7 @@ class RGA
    {
       var d:Doc = new Doc();
       var l:Array = [];
-      l.push(new DocLine("RG Access " + VERSION + " help. Escape closes.","text","title"));
+      l.push(new DocLine("RG Access " + RGAConfig.VERSION + " help. Escape closes.","text","title"));
       l.push(new DocLine("Anywhere","h2","g:any"));
       l.push(new DocLine("F1: this help. Press it again, or Escape, to close.","text","k:f1"));
       l.push(new DocLine("Reading the page","h2","g:read"));

@@ -237,7 +237,7 @@ class RGA
       l.push(new DocLine("R: jump to Resources (coins, production, gems, rubies, mana).","text","k:r"));
       l.push(new DocLine("Tab and Shift Tab: next or previous button.","text","k:tab"));
       l.push(new DocLine("Enter or Space: press the button you are on.","text","k:enter"));
-      l.push(new DocLine("T: read the tooltip of the button you are on. It opens as a page; Escape closes it.","text","k:tip"));
+      l.push(new DocLine("T: read the whole tooltip of the button you are on. Shift T: open the tooltip as a page to read line by line; Escape closes it.","text","k:tip"));
       l.push(new DocLine("Dialogs, such as the advisor, and notifications are spoken when they appear, and the cursor moves to them. When they close, it goes back to where it was.","text","k:dlg"));
       l.push(new DocLine("Buildings","h2","g:bld"));
       l.push(new DocLine("B and Shift B: next or previous building.","text","k:b"));
@@ -262,14 +262,20 @@ class RGA
       help.readCurrent();
    }
 
-   // Opens the current control's tooltip as a small page of its own; Escape closes it.
-   private static function showTooltip() : void
+   // T speaks the current control's whole tooltip. Shift+T (open) also opens it as a small
+   // page of its own, to read line by line; Escape closes it.
+   private static function showTooltip(open:Boolean) : void
    {
       var l:DocLine = doc.lines.length > doc.line ? DocLine(doc.lines[doc.line]) : null;
       var tip:Array = l == null || l.target == null ? [] : RGPage.tooltip(l.target);
       if(tip.length == 0)
       {
          Speech.say("No tooltip");
+         return;
+      }
+      if(!open)
+      {
+         Speech.say(tip.join(". "));
          return;
       }
       var a:Array = [];
@@ -301,9 +307,9 @@ class RGA
       {
          used = help.handleKey(e);
       }
-      else if(e.keyCode == 84 && !e.ctrlKey && !e.altKey) // T: tooltip of the current line
+      else if(e.keyCode == 84 && !e.ctrlKey && !e.altKey) // T: speak the tooltip of the current line; Shift+T: open it as a page
       {
-         showTooltip();
+         showTooltip(e.shiftKey);
          used = true;
       }
       else

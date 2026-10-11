@@ -7,4 +7,5 @@ When you learn something new, add it to the matching file (or a new file plus a 
 - `testing.md`: smoke test tool, log files, screen dump files, the single-instance rule. Read before testing or debugging a failure.
 - `ui-map.md`: what is on the game's screens, how controls expose text and tooltips, how clicking works. Read before adding or fixing anything the page reads or presses.
 - `names.md`: scrambled class and field names for game DATA (buildings, coins, save keys). Read only when reading game data directly instead of from the screen.
+- `game.md`: how the game itself is played (loop, factions, spells, assistants, buy keys). Read when the user asks about the game or a feature needs game knowledge.
 - `history.md`: approaches that were tried and dropped, and why. Read only before proposing a different architecture.

@@ -25,3 +25,9 @@ In `%APPDATA%\com.kongregate.mobile.realmgrinder.air\Local Store`:
 - The two dump files are written on Control+Shift+F12, and once automatically 25 s after start if a file named `rga_autodump` exists in that folder (it currently does). Read these instead of asking the user to paste output.
 
 In `<game>\RGAccess`: `rga_speech.log`, the speech helper's log (which screen reader it found, each line it was sent).
+
+## Added 2026-10-11
+- `dump` also answers how long the last list took to read ("list read in 32 ms").
+- The remote `press` speaks its result like Enter does. `rga_speech.log` (lines start with "S", the file starts again at every game start) shows everything spoken, so results and announcements can be checked there.
+- The user often plays while you test. Every restart interrupts them, so batch changes into one restart, and say so. Do not press things that change their setup (Buy amount, purchases); the log shows their own presses mixed with yours.
+- The cursor position cannot be seen from outside (no dump of it yet). To test cursor moves, add it to `dump` first.

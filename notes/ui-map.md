@@ -53,6 +53,8 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - `"#::>W` at the bottom of the Upgrades panel: faction coin counters. Public field `@e` is the faction number; names come from the static array `-D`.`45` (Fairy, Elven, Angel, Goblin, Undead, Demon, Titan, Druid, Faceless, Dwarven, Drow, Mercenary, Dragon, Archon...). `-D`.`]!4` holds event item names (Snowballs, Hearts...).
 - `'?::[[`: the list's scroll bar, made of thin unlabeled Buttons (skipped).
 
+- Row internals (from decomp `§1U§/§?!`§`, trophy `§"#§/§>m§`, header `§1U§/§5X§`): the `data` setter only stores and invalidates; `validate()` runs `§4!^§()`, which copies data into the row and refreshes it. Trophy rows keep the trophy in `§2g§`, and `§2g§.§4!K§` is true when earned (not earned is drawn at alpha 0.4). Clicking a trophy only shows a callout. Header data is `{text, collapsed, id}`.
+
 ## Other main screen pieces found
 - `]!6::3!5`: spell bar. Spell buttons `"#::5W` with labels name and "N mana" (Tax Collection 200, Call to Arms 400). Heading "Spells".
 - `"#::9!`: building pictures on the realm, `touchable = false` (skipped as decoration). `"#::%[`: Assistants figures on the realm, six identical controls (read once).

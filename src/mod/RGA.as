@@ -124,6 +124,7 @@ class RGA
    {
       var popup:String = lastPopup;
       var toast:String = lastToast;
+      RGPage.hoverAway();
       refresh();
       // A dialog or notification that just appeared has been spoken already, and it is the result.
       if(popup != lastPopup && lastPopup != "" || toast != lastToast && lastToast != "")

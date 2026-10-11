@@ -102,7 +102,8 @@ class RGARemote
          RGPage.tap(Number(xy[0]),Number(xy[1]));
          return "ok";
       }
-      if(verb == "press" || verb == "presskey")
+      // cpress and spress press with Control or Shift held.
+      if(verb == "press" || verb == "presskey" || verb == "cpress" || verb == "spress")
       {
          l = find(doc,arg,verb == "presskey",true);
          if(l == null)
@@ -113,7 +114,7 @@ class RGARemote
          {
             if(l.target != null)
             {
-               l.action(l.target,false,false);
+               l.action(l.target,verb == "cpress",verb == "spress");
             }
             else
             {

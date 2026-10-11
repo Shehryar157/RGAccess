@@ -59,8 +59,29 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - `]!6::3!5`: spell bar. Spell buttons `"#::5W` with labels name and "N mana" (Tax Collection 200, Call to Arms 400). Heading "Spells".
 - `"#::9!`: building pictures on the realm, `touchable = false` (skipped as decoration). `"#::%[`: Assistants figures on the realm, six identical controls (read once).
 
-## Not yet explored
-Events, the Mana/Spells button, Shop, Statistics, Options, Scrying, Kong; faction choice; abdication; options; stats; scroll containers whose contents are off screen; whether simulated clicks honour Control and Shift.
+## Screens explored 2026-10-11 (second session), all through the remote
+- Statistics `1Z::8!-`: three Radios (This Era, This Reincarnation, All Time) and a GroupedList `'?::=!4` with groups Production, Time, Spells, Factions. Each group has ONE row (`"#::+!G`, an IGroupedListItemRenderer that is not `isItem`) holding many Labels. `walkList` reads such rows as one text line per label. Section titles `1U::5X` also pass `isItem`, so `findRow` must never borrow one (that was the "no numbers" bug).
+- Options `1Z::?K`: Radios and about 30 Checks (read as "radio button/check box, checked/not checked" from `isSelected`, via `DocLine.role`), buttons Language, Audio, Overwrite, Restore, Save, Export, Import, templates, Hard Reset (never press), Community. No sliders or text inputs. Language and Audio sub-dialogs not opened.
+- Shop: title, description and price buttons per product; reads well as is. Real money, never press.
+- Scrying: a dialog that only says it is unavailable on this platform.
+- Events panel `]!6::@h`: "No event is currently running". Untested with a live event.
+- Kong tab: pressing it changes nothing in the tree on Steam, no tooltip. Left as is.
+- Mana orb `]!6::7R`: not a button. A tap only shows its tooltip (max mana, per second, spells cast); "Spells" under it is the caption of the spell bar. Now a text line; T reads the tooltip.
+- Abdication (button at the top of the Upgrades panel): dialog with title, explanation (gems to gain), buttons Abdicate, Gem Conversion, Close. Reads well. Not confirmed, of course.
+- Faction choice is done by buying upgrades (Proof of Good Deed, Trade Treaties, then the faction), so it goes through the Upgrades list.
+- Named dialogs (`RGPage.dialogName`: Statistics, Options) are announced by name only; their text is long and changes every second. This last bit is built but not yet run.
+
+## Control and Shift presses (confirmed)
+- The game's base control passes `TouchEvent.ctrlKey/shiftKey` to its click function; a building row hands them to the buy function. Starling's TouchProcessor fills them from private flags it sets when a "keyDown"/"keyUp" event with keyCode 17 or 16 reaches the Starling stage. `RGPage.modifier` dispatches such a `starling.events.KeyboardEvent` before every tap (`tap(x, y, ctrl, shift)`).
+- Remote: `cpress <name>` and `spress <name>`. Control press on Farm bought 10 (11 to 21). Shift press bought nothing because 100 farms were unaffordable; same code path, so not proven.
+- The user's Options have "Disable Buy Hotkey" CHECKED, which turns these shortcuts off in the game. Unknown whether that is deliberate; with it checked, Control Enter buys the normal amount.
+
+## Leftover tooltips (was the spell casting bug)
+- After a tap the hover tooltip `1Z::!s` sometimes stays open and is touchable, so it covered the spell buttons and `click` said "Blocked". `click` now sets every open tooltip `touchable = false` first, and `RGA.onResult` calls `RGPage.hoverAway()` 300 ms after a press. Casting Tax Collection through an open tooltip confirmed (mana 1000 to 808).
+
+## Still open
+- Events with a live event; Language and Audio sub-dialogs; Reincarnation dialog (still ??? in this save); other scroll containers with off-screen content (none met so far); Shift press proof.
+- `remote.py start` does not run commands given after it; send them in a second call.
 - Tooltip lines pass through `RGPage.keys`: CTRL+Click, SHIFT+Click and the whole word Click become Control Enter, Shift Enter and Press Enter ("Clicking Reward" stays).
 - `RGPage.keys` is also applied to every Label (dialogs, panels), not only tooltips; "Click this button" becomes "Press Enter on this button". It is NOT inside `clean`, because the remote uses `clean` on its commands ("click x y").
 - Tips and Hints `4X::^C`: pressing it does nothing; the current hint is its tooltip (T). On 2026-10-11 it said: gather 20 faction coins of one faction and sign a Trade Treaty with them. The dialog wording change is unverified live (no dialog containing "click" was open); the same function is verified on tooltips.

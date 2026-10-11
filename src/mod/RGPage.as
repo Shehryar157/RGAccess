@@ -2,6 +2,7 @@ import feathers.controls.Button;
 import feathers.controls.GroupedList;
 import feathers.controls.Label;
 import feathers.controls.renderers.IGroupedListHeaderRenderer;
+import feathers.controls.renderers.IGroupedListItemRenderer;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 import flash.utils.getDefinitionByName;
@@ -42,6 +43,7 @@ class RGPage
       manaDone = false;
       lastCls = "";
       toastText = "";
+      dialogName = "";
       var stage:DisplayObjectContainer = Starling.current.stage;
       // Everything on the stage after the first child is a dialog on top of the game.
       for(i = stage.numChildren - 1; i >= 1; i--)
@@ -82,9 +84,14 @@ class RGPage
       }
       // A dialog without any text, like the buy amount chooser, is announced by its buttons.
       popupText = said.length > 0 ? said.join(" ") : names.join(", ");
+      if(dialogName != "")
+      {
+         // Statistics and Options are long and their numbers keep changing: announce the name only.
+         popupText = dialogName;
+      }
       if(pop.length > 0)
       {
-         out.push(new DocLine("Dialog","h1","h:dialog"));
+         out.push(new DocLine(dialogName == "" ? "Dialog" : dialogName + " dialog","h1","h:dialog"));
          out = out.concat(pop);
       }
       var mainAt:int = out.length;
@@ -159,6 +166,14 @@ class RGPage
       if(cls == MANA && manaDone)
       {
          return;
+      }
+      if(cls == "1Z::8!-")
+      {
+         dialogName = "Statistics";
+      }
+      if(cls == "1Z::?K")
+      {
+         dialogName = "Options";
       }
       if(obj is IGroupedListHeaderRenderer)
       {
@@ -303,6 +318,17 @@ class RGPage
             {
                row.data = items[i];
                row.validate();
+               if(!isItem(row))
+               {
+                  // A row that is only text, like a block of statistics: every label is a line.
+                  var texts:Array = [];
+                  collectLabels(DisplayObject(row),texts);
+                  for(var j:int = 0; j < texts.length; j++)
+                  {
+                     out.push(new DocLine(texts[j],"text",nextKey("t")));
+                  }
+                  continue;
+               }
                var line:DocLine = controlLine(DisplayObject(row),cls);
                // Several identical items in a row (trophies still shown as ???) are read once.
                if(out.length > 0 && DocLine(out[out.length - 1]).text == line.text)
@@ -335,9 +361,10 @@ class RGPage
       for(var i:int = 0; i < box.numChildren; i++)
       {
          var k:Object = box.getChildAt(i);
-         if(k is IGroupedListHeaderRenderer || isItem(k))
+         if(k is IGroupedListHeaderRenderer || k is IGroupedListItemRenderer || isItem(k))
          {
-            if(item == null ? isItem(k) && k.visible && k.data != null : k.data === item)
+            // A section title also has a title and a description, but it is not a row to borrow.
+            if(item == null ? !(k is IGroupedListHeaderRenderer) && k.visible && k.data != null : k.data === item)
             {
                return k;
             }
@@ -410,6 +437,8 @@ class RGPage
    public static var TOAST:String = "'?::8!L";
    // Text of the notification banner on screen, or "".
    public static var toastText:String = "";
+   // Name of the dialog on screen when it has no title of its own ("Statistics"), or "".
+   private static var dialogName:String = "";
 
    // Names for buttons that are only a picture: no text and no tooltip title.
    // Found from the picture each class loads (UIShop, BGView, UIAudio, UICog) and the dialog it opens.
@@ -495,6 +524,10 @@ class RGPage
       if(cls == "]!6::3!5")
       {
          return "Spells";
+      }
+      if(cls == "]!6::@h")
+      {
+         return "Events panel";
       }
       if(cls == TOAST)
       {
@@ -590,6 +623,22 @@ class RGPage
       }
       var l:DocLine = new DocLine(text,kind,nextKey(cls),click);
       l.target = obj;
+      // A tick box or one of a group of choices says which state it is in.
+      if(cls.indexOf("::Check") > 0)
+      {
+         l.role = o["isSelected"] ? "check box, checked" : "check box, not checked";
+      }
+      if(cls.indexOf("::Radio") > 0)
+      {
+         l.role = o["isSelected"] ? "radio button, checked" : "radio button, not checked";
+      }
+      if(cls == MANA)
+      {
+         // The mana orb only shows amounts; "Spells" under it is the caption of the spell bar.
+         l.text = text.replace(", Spells","");
+         l.kind = "text";
+         l.action = null;
+      }
       if(cls == "\"#::=!R")
       {
          // An amount in the status bar (coins, gems...). Clicking it does nothing, so it is plain
@@ -736,7 +785,8 @@ class RGPage
       s = s.replace(new RegExp("\\b([Cc])lick on\\b","g"),"$1lick");
       s = s.replace(new RegExp("\\bClick (this|the|a|an|any|your)\\b","g"),"Press Enter on $1");
       s = s.replace(new RegExp("\\bclick (this|the|a|an|any|your)\\b","g"),"press Enter on $1");
-      s = s.replace(new RegExp("\\bClick\\b","g"),"Press Enter");
+      // "Coins per Click" in the statistics is a name, not an instruction.
+      s = s.replace(new RegExp("(?<!per )\\bClick\\b","g"),"Press Enter");
       s = s.replace(new RegExp("\\bclick\\b","g"),"press Enter");
       return s;
    }
@@ -758,6 +808,16 @@ class RGPage
    public static function click(target:Object, ctrl:Boolean, shift:Boolean) : void
    {
       var d:DisplayObject = DisplayObject(target);
+      // A hover tooltip the game left open can lie over a button (it did over the spells).
+      // It is only a picture, so make it let presses through.
+      var st:DisplayObjectContainer = Starling.current.stage;
+      for(var t:int = 1; t < st.numChildren; t++)
+      {
+         if(getQualifiedClassName(st.getChildAt(t)) == TOOLTIP)
+         {
+            st.getChildAt(t).touchable = false;
+         }
+      }
       var r:Rectangle = d.getBounds(Starling.current.stage);
       // Ask the engine what is on top at a few points inside the control, and press the
       // first point where that is the control itself. Something else may cover its centre.
@@ -772,7 +832,7 @@ class RGPage
          if(hit != null && inside(hit,d))
          {
             RGALog.write("click " + getQualifiedClassName(d) + " at " + int(x) + "," + int(y) + state(d) + (i > 0 ? ", centre covered by " + cover : ""));
-            tap(x,y);
+            tap(x,y,ctrl,shift);
             return;
          }
          if(i == 0)
@@ -822,9 +882,25 @@ class RGPage
       tap(r.x + r.width * 0.3,r.y + r.height * 0.2);
    }
 
-   // Feed Starling (the game's graphics engine) a mouse move, press and release at x, y.
-   public static function tap(x:Number, y:Number) : void
+   // Move the pretend mouse off the screen, so the game closes its hover tooltip.
+   public static function hoverAway() : void
    {
+      Starling.current.touchProcessor.enqueue(0,"hover",-5000,-5000);
+   }
+
+   // The game asks Starling whether Control or Shift is held during a click (buy 10, buy 100).
+   // Starling learns that from key events on its stage, so it is sent one for each key.
+   private static function modifier(code:int, down:Boolean) : void
+   {
+      var K:Class = getDefinitionByName("starling.events.KeyboardEvent") as Class;
+      Starling.current.stage.dispatchEvent(new K(down ? "keyDown" : "keyUp",0,code));
+   }
+
+   // Feed Starling (the game's graphics engine) a mouse move, press and release at x, y.
+   public static function tap(x:Number, y:Number, ctrl:Boolean = false, shift:Boolean = false) : void
+   {
+      modifier(17,ctrl);
+      modifier(16,shift);
       var tp:* = Starling.current.touchProcessor;
       tp.enqueue(0,"hover",x,y);
       tp.enqueue(0,"began",x,y);

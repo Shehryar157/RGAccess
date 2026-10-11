@@ -9,6 +9,8 @@ class DocLine
 {
    public var text:String;
    public var kind:String;
+   // What a button line is called when spoken: "button", "check box, checked"...
+   public var role:String = "button";
    public var key:String;
    public var action:Function;
    // The game object this line stands for. When set, action is called as action(target, ctrl, shift).
@@ -45,7 +47,7 @@ class DocLine
       }
       if(isButton)
       {
-         return text + ", button";
+         return text + ", " + role;
       }
       return text == "" ? "blank" : text;
    }

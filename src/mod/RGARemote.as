@@ -94,7 +94,7 @@ class RGARemote
       {
          RGADump.dump(arg);
          RGPage.dump(doc.lines,arg);
-         return doc.lines.length + " lines";
+         return doc.lines.length + " lines, list read in " + RGPage.listMs + " ms";
       }
       if(verb == "click")
       {
@@ -124,6 +124,7 @@ class RGARemote
          {
             return "FAILED on " + l.text + ": " + err.message;
          }
+         RGA.afterAction(l);
          return "pressed " + l.text + " [" + l.key + "]";
       }
       if(verb == "tip")

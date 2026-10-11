@@ -1,10 +1,12 @@
 import feathers.controls.Button;
+import feathers.controls.GroupedList;
 import feathers.controls.Label;
 import feathers.controls.renderers.IGroupedListHeaderRenderer;
 import flash.geom.Point;
 import flash.geom.Rectangle;
 import flash.utils.getDefinitionByName;
 import flash.utils.getQualifiedClassName;
+import flash.utils.getTimer;
 import starling.core.Starling;
 import starling.display.DisplayObject;
 import starling.display.DisplayObjectContainer;
@@ -32,8 +34,10 @@ class RGPage
       var out:Array = [];
       var pop:Array = [];
       var said:Array = [];
+      var names:Array = [];
       var i:int;
       var j:int;
+      var cont:DocLine = null;
       counts = new Object();
       manaDone = false;
       lastCls = "";
@@ -58,6 +62,7 @@ class RGPage
                if(DocLine(part[j]).isButton)
                {
                   hasButton = true;
+                  names.push(DocLine(part[j]).text);
                }
                else
                {
@@ -70,25 +75,68 @@ class RGPage
                var go:DocLine = new DocLine("Continue","button",nextKey("continue"),click);
                go.target = stage.getChildAt(i);
                part.push(go);
+               cont = go;
             }
             pop = pop.concat(part);
          }
       }
-      popupText = said.join(" ");
+      // A dialog without any text, like the buy amount chooser, is announced by its buttons.
+      popupText = said.length > 0 ? said.join(" ") : names.join(", ");
       if(pop.length > 0)
       {
          out.push(new DocLine("Dialog","h1","h:dialog"));
          out = out.concat(pop);
       }
+      var mainAt:int = out.length;
       if(stage.numChildren > 0)
       {
          walk(stage.getChildAt(0),out);
+      }
+      if(cont != null)
+      {
+         spotlight(cont,out,mainAt);
       }
       if(out.length == 0)
       {
          out.push(new DocLine("Nothing on screen yet","text","empty"));
       }
       return out;
+   }
+
+   // A tutorial message can darken the whole screen except one button ("Click this button...")
+   // and wait until that button is pressed; clicking the message itself does nothing then.
+   // So if only a few of the page's buttons can be reached, Continue presses the first of them.
+   private static function spotlight(go:DocLine, lines:Array, from:int) : void
+   {
+      var total:int = 0;
+      var reachable:int = 0;
+      var first:DocLine = null;
+      for(var i:int = from; i < lines.length; i++)
+      {
+         var l:DocLine = DocLine(lines[i]);
+         if(l.action == null || !(l.target is DisplayObject))
+         {
+            continue;
+         }
+         total++;
+         var d:DisplayObject = DisplayObject(l.target);
+         var r:Rectangle = d.getBounds(Starling.current.stage);
+         var hit:DisplayObject = Starling.current.stage.hitTest(new Point(r.x + r.width / 2,r.y + r.height / 2),true);
+         if(hit != null && inside(hit,d))
+         {
+            reachable++;
+            if(first == null)
+            {
+               first = l;
+            }
+         }
+      }
+      if(first != null && reachable <= 3 && reachable < total)
+      {
+         go.text = "Continue, presses " + first.text;
+         go.target = first.target;
+         go.action = first.action;
+      }
    }
 
    private static function walk(obj:DisplayObject, out:Array) : void
@@ -121,6 +169,10 @@ class RGPage
          {
             out.push(new DocLine(heads.join(", "),"h2",nextKey("h2:" + heads[0])));
          }
+         return;
+      }
+      if(obj is GroupedList && walkList(GroupedList(obj),out))
+      {
          return;
       }
       if((obj is §6+§ || obj is Button || isItem(obj)) && (c == null || !hasControl(c)))
@@ -161,7 +213,7 @@ class RGPage
       }
       if(cls == "]!6::%!a")
       {
-         var realm:DocLine = new DocLine("The realm, click to earn coins","button","realm",clickRealm);
+         var realm:DocLine = new DocLine("Click to earn coins","button","realm",clickRealm);
          realm.target = obj;
          out.push(realm);
       }
@@ -214,6 +266,127 @@ class RGPage
    }
 
    private static var lastCls:String = "";
+   // How long the last list took to read, in milliseconds (shown by the remote "dump" command).
+   public static var listMs:int = 0;
+
+   // A list (upgrades, trophies) only creates the rows that fit on screen and reuses them while
+   // scrolling. So the rows are not read. Instead every item is taken from the list's data, which
+   // is an Array of groups {header:{text, collapsed}, children:[items]}, and each item is shown in
+   // one borrowed row just long enough to read it. Returns false if the list cannot be read this way.
+   private static function walkList(list:GroupedList, out:Array) : Boolean
+   {
+      var row:Object = findRow(list,null);
+      var groups:Array = list.dataProvider == null ? null : list.dataProvider.data as Array;
+      if(row == null || groups == null)
+      {
+         return false;
+      }
+      var t0:int = getTimer();
+      var cls:String = getQualifiedClassName(row);
+      var own:Object = row.data;
+      var failed:Error = null;
+      try
+      {
+         for(var g:int = 0; g < groups.length; g++)
+         {
+            var head:Object = groups[g].hasOwnProperty("header") ? groups[g]["header"] : null;
+            if(head != null)
+            {
+               // Enter on the heading does what clicking it does in the game: close or open the section.
+               var title:String = clean(String(head["text"]));
+               var hl:DocLine = new DocLine(title + (head["collapsed"] ? ", collapsed" : ""),"h2",nextKey("h2:" + title),clickItem);
+               hl.target = new ListItem(list,g,-1,head);
+               out.push(hl);
+            }
+            var items:Array = groups[g]["children"] as Array;
+            for(var i:int = 0; items != null && i < items.length; i++)
+            {
+               row.data = items[i];
+               row.validate();
+               var line:DocLine = controlLine(DisplayObject(row),cls);
+               // Several identical items in a row (trophies still shown as ???) are read once.
+               if(out.length > 0 && DocLine(out[out.length - 1]).text == line.text)
+               {
+                  continue;
+               }
+               line.target = new ListItem(list,g,i,items[i]);
+               line.action = clickItem;
+               out.push(line);
+            }
+         }
+      }
+      catch(e:Error)
+      {
+         failed = e;
+      }
+      row.data = own;
+      row.validate();
+      listMs = getTimer() - t0;
+      if(failed != null)
+      {
+         throw failed;
+      }
+      return true;
+   }
+
+   // The row inside box that shows this item (or, with item null, the first row that shows anything).
+   private static function findRow(box:DisplayObjectContainer, item:Object) : Object
+   {
+      for(var i:int = 0; i < box.numChildren; i++)
+      {
+         var k:Object = box.getChildAt(i);
+         if(k is IGroupedListHeaderRenderer || isItem(k))
+         {
+            if(item == null ? isItem(k) && k.visible && k.data != null : k.data === item)
+            {
+               return k;
+            }
+         }
+         else if(k is DisplayObjectContainer)
+         {
+            var found:Object = findRow(DisplayObjectContainer(k),item);
+            if(found != null)
+            {
+               return found;
+            }
+         }
+      }
+      return null;
+   }
+
+   // Enter on a list item or list heading: scroll the list to it, so the game creates its row, and click that.
+   public static function clickItem(target:Object, ctrl:Boolean, shift:Boolean) : void
+   {
+      var it:ListItem = ListItem(target);
+      it.list.scrollToDisplayIndex(it.group,it.index,0);
+      // The first pass does the scrolling, the next creates the rows for the new position.
+      it.list.validate();
+      it.list.validate();
+      it.list.validate();
+      var row:Object = findRow(it.list,it.item);
+      if(row == null)
+      {
+         throw new Error("Could not bring this item on screen.");
+      }
+      click(row,ctrl,shift);
+   }
+
+   // The tooltip of a list item, read through a borrowed row like walkList does.
+   private static function itemTip(it:ListItem) : Array
+   {
+      var row:Object = findRow(it.list,null);
+      if(row == null || it.index < 0)
+      {
+         return [];
+      }
+      var own:Object = row.data;
+      row.data = it.item;
+      row.validate();
+      var tip:Array = tooltip(row);
+      row.data = own;
+      row.validate();
+      return tip;
+   }
 
    private static function byPosition(a:DisplayObject, b:DisplayObject) : int
    {
@@ -234,7 +407,7 @@ class RGPage
    private static var STATUS:String = "]!6::+r";
    private static var MANA:String = "]!6::7R";
    private static var TOOLTIP:String = "1Z::!s";
-   private static var TOAST:String = "'?::8!L";
+   public static var TOAST:String = "'?::8!L";
    // Text of the notification banner on screen, or "".
    public static var toastText:String = "";
 
@@ -353,7 +526,10 @@ class RGPage
       if(obj is §[!2§ && labels.length >= 4)
       {
          kind = "building";
-         text = labels[0] + ", " + labels[3] + " owned, costs " + labels[1] + ", " + labels[2] + " of production";
+         // With a buy amount above 1 the game writes the price as "4x 116": 4 of them for 116 coins.
+         var many:Array = String(labels[1]).match(new RegExp("^(\\S+)x (.+)$"));
+         var cost:String = many == null ? "costs " + labels[1] : "costs " + many[2] + " for " + many[1];
+         text = labels[0] + ", " + labels[3] + " owned, " + cost + ", " + labels[2] + " of production";
       }
       else
       {
@@ -414,6 +590,13 @@ class RGPage
       }
       var l:DocLine = new DocLine(text,kind,nextKey(cls),click);
       l.target = obj;
+      if(cls == "\"#::=!R")
+      {
+         // An amount in the status bar (coins, gems...). Clicking it does nothing, so it is plain
+         // text; it keeps its target, so T still reads its tooltip.
+         l.kind = "text";
+         l.action = null;
+      }
       return l;
    }
 
@@ -508,6 +691,10 @@ class RGPage
    public static function tooltip(target:Object) : Array
    {
       var out:Array = [];
+      if(target is ListItem)
+      {
+         return itemTip(ListItem(target));
+      }
       if(target == null || !(target is §6+§ || isItem(target)))
       {
          return out;
@@ -653,5 +840,24 @@ class RGPage
       s.open(FileC["applicationStorageDirectory"].resolvePath("rga_page" + (name == "" ? "" : "_" + name) + ".txt"),"write");
       s.writeUTFBytes(a.join("\r\n"));
       s.close();
+   }
+}
+
+// One item (or, with index -1, one heading) of a list, wherever it is in the list.
+// It is the target of that item's page line, because the item may have no row on screen.
+class ListItem
+{
+   public var list:GroupedList;
+   public var group:int;
+   public var index:int;
+   // The item's data, as the list holds it.
+   public var item:Object;
+
+   public function ListItem(list:GroupedList, group:int, index:int, item:Object)
+   {
+      this.list = list;
+      this.group = group;
+      this.index = index;
+      this.item = item;
    }
 }

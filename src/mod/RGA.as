@@ -24,7 +24,7 @@ class RGA
 
       // High priority so we see keys before the game does.
       stage.addEventListener(KeyboardEvent.KEY_DOWN,onKey,false,1000);
-      doc.onAction = refresh;
+      doc.onAction = afterAction;
       var t:Timer = new Timer(1000);
       t.addEventListener(TimerEvent.TIMER,onTick);
       t.start();
@@ -72,6 +72,7 @@ class RGA
             if(lastToast != "")
             {
                Speech.say(lastToast,false);
+               doc.visit("h:" + RGPage.TOAST);
             }
          }
          if(RGPage.popupText != lastPopup)
@@ -80,7 +81,12 @@ class RGA
             if(lastPopup != "")
             {
                Speech.say("Dialog. " + lastPopup,false);
+               doc.visit("h:dialog");
             }
+         }
+         if(lastToast == "" && lastPopup == "")
+         {
+            doc.backKey = null;
          }
       }
       catch(e:Error)
@@ -93,6 +99,127 @@ class RGA
             RGALog.write("page build failed: " + e.getStackTrace());
          }
       }
+   }
+
+   // The line Enter was pressed on, and the page's main headings at that moment.
+   private static var pressedLine:DocLine = null;
+   private static var headsBefore:Object = null;
+   private static var resultTimer:Timer = null;
+
+   // After a button is pressed: give the game a moment to react, then say what happened.
+   public static function afterAction(l:DocLine) : void
+   {
+      pressedLine = l;
+      headsBefore = heads();
+      if(resultTimer == null)
+      {
+         resultTimer = new Timer(300,1);
+         resultTimer.addEventListener(TimerEvent.TIMER,onResult);
+      }
+      resultTimer.reset();
+      resultTimer.start();
+   }
+
+   private static function onResult(e:TimerEvent) : void
+   {
+      var popup:String = lastPopup;
+      var toast:String = lastToast;
+      refresh();
+      // A dialog or notification that just appeared has been spoken already, and it is the result.
+      if(popup != lastPopup && lastPopup != "" || toast != lastToast && lastToast != "")
+      {
+         return;
+      }
+      try
+      {
+         Speech.say(result(pressedLine));
+      }
+      catch(err:Error)
+      {
+         RGALog.write("result failed: " + err.getStackTrace());
+      }
+   }
+
+   // The level 1 headings on the page, as key -> text.
+   private static function heads() : Object
+   {
+      var o:Object = new Object();
+      for(var i:int = 0; i < doc.lines.length; i++)
+      {
+         var l:DocLine = DocLine(doc.lines[i]);
+         if(l.kind == "h1")
+         {
+            o[l.key] = l.text;
+         }
+      }
+      return o;
+   }
+
+   // The number in "Farm, 6 owned, costs..." (as text: it may be written like 1.2 M).
+   private static function owned(text:String) : String
+   {
+      var m:Array = text.match(new RegExp(", (\\S+) owned"));
+      return m == null ? "" : String(m[1]);
+   }
+
+   // What pressing the line "old" did, found by comparing it with the page as it is now. "" if nothing to say.
+   private static function result(old:DocLine) : String
+   {
+      var i:int;
+      var l:DocLine;
+      var now:DocLine = null;
+      var item:ListItem = old.target as ListItem;
+      for(i = 0; i < doc.lines.length && now == null; i++)
+      {
+         l = DocLine(doc.lines[i]);
+         if(item != null ? l.target is ListItem && ListItem(l.target).item === item.item : l.key == old.key)
+         {
+            now = l;
+         }
+      }
+      var name:String = String(old.text.split(",")[0]);
+      if(old.kind == "building" && now != null)
+      {
+         if(owned(now.text) != owned(old.text))
+         {
+            return name + " purchased, " + owned(now.text) + " owned";
+         }
+         return old.text.indexOf("unavailable") >= 0 ? "Cannot afford " + name : name + " not purchased";
+      }
+      if(item != null && item.index >= 0)
+      {
+         // A bought upgrade leaves the list or moves to the Purchased section.
+         if(now == null || ListItem(now.target).group != item.group)
+         {
+            return name + " purchased";
+         }
+         if(old.text.indexOf("cannot afford") >= 0)
+         {
+            return "Cannot afford " + name;
+         }
+      }
+      if(now != null && now.text != old.text)
+      {
+         return now.text;
+      }
+      // A part of the screen opened or closed.
+      var after:Object = heads();
+      var key:String;
+      for(key in after)
+      {
+         if(!headsBefore.hasOwnProperty(key))
+         {
+            return String(after[key]) + " opened";
+         }
+      }
+      for(key in headsBefore)
+      {
+         if(!after.hasOwnProperty(key))
+         {
+            return String(headsBefore[key]) + " closed";
+         }
+      }
+      return "";
    }
 
    // F1 help: a second page, like FFC Access's help window. Escape or F1 closes it.
@@ -116,11 +243,13 @@ class RGA
       l.push(new DocLine("Tab and Shift Tab: next or previous button.","text","k:tab"));
       l.push(new DocLine("Enter or Space: press the button you are on.","text","k:enter"));
       l.push(new DocLine("T: read the tooltip of the button you are on. It opens as a page; Escape closes it.","text","k:tip"));
-      l.push(new DocLine("Dialogs, such as the advisor, are spoken when they appear and are listed at the top of the page.","text","k:dlg"));
+      l.push(new DocLine("Dialogs, such as the advisor, and notifications are spoken when they appear, and the cursor moves to them. When they close, it goes back to where it was.","text","k:dlg"));
       l.push(new DocLine("Buildings","h2","g:bld"));
       l.push(new DocLine("B and Shift B: next or previous building.","text","k:b"));
       l.push(new DocLine("Enter on a building: buy it, using the game's buy mode.","text","k:buy"));
-      l.push(new DocLine("Control Enter or Shift Enter: the same as Control click or Shift click in the game.","text","k:buymod"));
+      l.push(new DocLine("Control Enter: buy 10. Shift Enter: buy 100. Control Shift Enter: buy as many as you can afford.","text","k:buymod"));
+      l.push(new DocLine("T on a building reads what each of those would cost.","text","k:buytip"));
+      l.push(new DocLine("After Enter, the mod says what happened, for example Farm purchased, 7 owned. It says nothing if nothing changed.","text","k:result"));
       d.lines = l;
       return d;
    }

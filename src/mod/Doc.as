@@ -61,8 +61,10 @@ class Doc
    // Selection anchor: where Shift-selection started. -1 means no selection.
    private var aLine:int = -1;
    private var aCol:int = 0;
-   // Called after Enter runs an action, so the page can rebuild right away.
+   // Called as onAction(line) after Enter runs a line's action, so the result can be announced.
    public var onAction:Function = null;
+   // Where the cursor was before visit() moved it, or null.
+   public var backKey:String = null;
 
    public function Doc()
    {
@@ -94,6 +96,20 @@ class Doc
             break;
          }
       }
+      if(line < 0 && backKey != null)
+      {
+         // The dialog or notification the cursor was taken to is gone: go back to where it was before.
+         for(i = 0; i < lines.length; i++)
+         {
+            if(DocLine(lines[i]).key == backKey)
+            {
+               line = i;
+               col = 0;
+               break;
+            }
+         }
+         backKey = null;
+      }
       if(line < 0)
       {
          line = Math.min(oldLine,lines.length - 1);
@@ -106,6 +122,26 @@ class Doc
       if(aLine >= 0)
       {
          aCol = Math.min(aCol,DocLine(lines[aLine]).text.length);
+      }
+   }
+
+   // Something appeared on the page (a dialog, a notification): put the cursor on its first line.
+   // Nothing is spoken here; the caller announces what appeared.
+   public function visit(key:String) : void
+   {
+      for(var i:int = 0; i < lines.length; i++)
+      {
+         if(DocLine(lines[i]).key == key)
+         {
+            if(backKey == null && line < lines.length)
+            {
+               backKey = cur().key;
+            }
+            line = i;
+            col = 0;
+            aLine = -1;
+            return;
+         }
       }
    }
 
@@ -246,9 +282,8 @@ class Doc
       }
       if(onAction != null)
       {
-         onAction();
+         onAction(l);
       }
-      Speech.say(cur().text);
    }
 
    private function moveCursor(k:uint, ctrl:Boolean, shift:Boolean) : void

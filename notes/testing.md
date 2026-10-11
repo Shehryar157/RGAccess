@@ -30,5 +30,6 @@ In `<game>\RGAccess`: `rga_speech.log`, the speech helper's log (which screen re
 - `dump` also answers how long the last list took to read ("list read in 32 ms").
 - The remote `press` speaks its result like Enter does. `rga_speech.log` (lines start with "S", the file starts again at every game start) shows everything spoken, so results and announcements can be checked there.
 - The user often plays while you test. Every restart interrupts them, so batch changes into one restart, and say so. Do not press things that change their setup (Buy amount, purchases); the log shows their own presses mixed with yours.
+- Remote `time` builds the page 10 times each way and answers with the average milliseconds.
 - Remote `key <code>` types a key on the page through `Doc.handleKey` (80 = P) and `where` types nothing; both answer with the line the cursor is on (added 2026-10-12). Keys handled in `RGA.onKey` itself (F1, T, Escape) still cannot be typed.
 - When the user is playing, their own key presses move the cursor between your commands: trust `rga_speech.log` over `where`.

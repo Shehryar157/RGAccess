@@ -1,3 +1,4 @@
+import flash.utils.getTimer;
 import flash.utils.getDefinitionByName;
 
 // Research remote control, so the game can be explored without anyone at the keyboard.
@@ -105,6 +106,24 @@ class RGARemote
             doc.handleKey(new KeyboardEvent(KeyboardEvent.KEY_DOWN,true,false,0,int(arg)));
          }
          return "cursor: " + DocLine(doc.lines[doc.line]).text;
+      }
+      if(verb == "time")
+      {
+         // How long building the page takes: reading every list again, and with lists kept.
+         var t0:int = getTimer();
+         var n:int;
+         for(n = 0; n < 10; n++)
+         {
+            RGPage.listStale = true;
+            RGPage.build();
+         }
+         var full:int = getTimer() - t0;
+         t0 = getTimer();
+         for(n = 0; n < 10; n++)
+         {
+            RGPage.build();
+         }
+         return "full build " + full / 10 + " ms, kept lists " + (getTimer() - t0) / 10 + " ms, " + doc.lines.length + " lines";
       }
       if(verb == "click")
       {

@@ -30,8 +30,9 @@ def bundle(only=None, release=False):
     main = open(os.path.join(ROOT, "src", "scripts", "Main.as"), encoding="utf-8").read()
     imports, bodies = [], []
     config = ('class RGAConfig\n{\n   public static const PYTHONW:String = "%s";\n'
-              '   public static const VERSION:String = "%s";\n}\n'
-              % ("" if release else PYTHONW.replace("\\", "\\\\"), VERSION))
+              '   public static const VERSION:String = "%s";\n'
+              '   public static const DEV:Boolean = %s;\n}\n'     # research tools on or off
+              % ("" if release else PYTHONW.replace("\\", "\\\\"), VERSION, "false" if release else "true"))
     bodies.append(config)
     mod_dir = os.path.join(ROOT, "src", "mod")
     for name in sorted(os.listdir(mod_dir)):
@@ -53,7 +54,7 @@ def compile_swf(main_as):
     out_swf = os.path.join(BUILD, "RealmGrinderDesktop.swf")
     if os.path.exists(out_swf):
         os.remove(out_swf)
-    result = subprocess.run([JAVA, "-jar", FFDEC, "-replace", ORIGINAL, out_swf, "Main", main_as],
+    result = subprocess.run([JAVA, "-Xmx1g", "-jar", FFDEC, "-replace", ORIGINAL, out_swf, "Main", main_as],
                             capture_output=True, text=True)
     output = re.sub(r"\x1b\[[0-9;]*m", "", result.stdout + result.stderr)
     errors = [l for l in output.splitlines() if "SEVERE" in l or "rror" in l]

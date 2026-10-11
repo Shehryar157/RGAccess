@@ -8,6 +8,7 @@ import flash.geom.Rectangle;
 import flash.utils.getDefinitionByName;
 import flash.utils.getQualifiedClassName;
 import flash.utils.getTimer;
+import flash.utils.Dictionary;
 import starling.core.Starling;
 import starling.display.DisplayObject;
 import starling.display.DisplayObjectContainer;
@@ -116,6 +117,7 @@ class RGPage
       {
          out.push(new DocLine("Nothing on screen yet","text","empty"));
       }
+      listStale = false;
       return out;
    }
 
@@ -323,6 +325,30 @@ class RGPage
          return false;
       }
       var t0:int = getTimer();
+      // Reading every item is the slowest thing the mod does, so a list of items is kept for
+      // LIST_FRESH ms and read again only when it gained or lost items, or after a press.
+      var sig:String = listSig(groups);
+      if(listCache == null)
+      {
+         listCache = new Dictionary(true);
+      }
+      var kept:Object = listCache[list];
+      var n:int;
+      var k:String;
+      if(kept != null && !listStale && kept.sig == sig && t0 - kept.time < LIST_FRESH)
+      {
+         for(n = 0; n < kept.lines.length; n++)
+         {
+            out.push(kept.lines[n]);
+         }
+         for(k in kept.counts)
+         {
+            counts[k] = kept.counts[k];
+         }
+         return true;
+      }
+      var startAt:int = out.length;
+      var allItems:Boolean = true;
       var cls:String = getQualifiedClassName(row);
       var own:Object = row.data;
       var failed:Error = null;
@@ -347,6 +373,8 @@ class RGPage
                if(!isItem(row))
                {
                   // A row that is only text, like a block of statistics: every label is a line.
+                  // Its numbers change all the time, so such a list is never kept.
+                  allItems = false;
                   var texts:Array = [];
                   collectLabels(DisplayObject(row),texts);
                   for(var j:int = 0; j < texts.length; j++)
@@ -378,7 +406,43 @@ class RGPage
       {
          throw failed;
       }
+      if(allItems)
+      {
+         kept = new Object();
+         kept.sig = sig;
+         kept.time = getTimer();
+         kept.lines = out.slice(startAt);
+         kept.counts = new Object();
+         for(k in counts)
+         {
+            kept.counts[k] = counts[k];
+         }
+         listCache[list] = kept;
+      }
+      else
+      {
+         delete listCache[list];
+      }
       return true;
+   }
+
+   // Lists that were read a moment ago: list -> {sig, time, lines, counts}.
+   private static var listCache:Dictionary = null;
+   private static var LIST_FRESH:int = 2000;
+   // Set to make the next build read every list again (after a press, which may have bought something).
+   public static var listStale:Boolean = false;
+
+   // The shape of a list: how many items each section has and whether it is collapsed.
+   private static function listSig(groups:Array) : String
+   {
+      var s:String = "";
+      for(var g:int = 0; g < groups.length; g++)
+      {
+         var head:Object = groups[g].hasOwnProperty("header") ? groups[g]["header"] : null;
+         var items:Array = groups[g]["children"] as Array;
+         s += (items == null ? 0 : items.length) + (head != null && head["collapsed"] ? "c," : "o,");
+      }
+      return s;
    }
 
    // The row inside box that shows this item (or, with item null, the first row that shows anything).
@@ -643,6 +707,12 @@ class RGPage
       {
          text = "Unlabelled";
       }
+      if(text == "???")
+      {
+         // The game hides the name of something not unlocked yet, and a screen reader skips
+         // question marks. The one below Abdication is Reincarnation.
+         text = cls == "4X::59" ? "Reincarnation, locked" : "Locked";
+      }
       if(o.hasOwnProperty("isEnabled") && !o["isEnabled"])
       {
          text += ", unavailable";
@@ -855,7 +925,7 @@ class RGPage
          var hit:DisplayObject = Starling.current.stage.hitTest(new Point(x,y),true);
          if(hit != null && inside(hit,d))
          {
-            RGALog.write("click " + getQualifiedClassName(d) + " at " + int(x) + "," + int(y) + state(d) + (i > 0 ? ", centre covered by " + cover : ""));
+            if(RGAConfig.DEV) RGALog.write("click " + getQualifiedClassName(d) + " at " + int(x) + "," + int(y) + state(d) + (i > 0 ? ", centre covered by " + cover : ""));
             tap(x,y,ctrl,shift);
             return;
          }

@@ -97,3 +97,16 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 ## Jump keys (added 2026-10-12, confirmed in the speech log)
 - R: Toolbar heading (`h:toolbar`; it was Resources until the user changed it, 2026-10-12). S: Spells heading (`h:]!6::3!5`). U: Upgrades panel heading (`h:]!6::>F`); when the panel is closed, presses the Upgrades tab (`"#:: !D#0`) and `Doc.wantKey` moves the cursor to the heading once it appears. O: the heading "Options dialog" when open, else presses the icon button `4X::2!Z#0`; the dialog takes the cursor by itself (`Doc.goTo`). Statistics has no key (it was on S for a moment; its button is `4X::9P#0`).
 - Opening a dialog this way speaks twice: "Dialog. Statistics" and then "Statistics dialog opened". Harmless, not fixed.
+
+## Speed (2026-10-12)
+- Measured with remote `time` (page build, average of 10): main screen 6 ms, Upgrades 17 ms, Trophies 47 ms, Options 29 ms. Almost all of the difference is `walkList` (every item goes through a borrowed row and `validate()`).
+- Before, `RGA.onKey` rebuilt the page before EVERY key. Now only keys that press something do (Enter, Space, U, O); moving and reading use the page the timer keeps.
+- `walkList` keeps a list of items for 2 s (`listCache`, keyed by list, checked by `listSig`: item count and collapsed state per section). `RGPage.listStale = true` forces a re-read; `RGA.onResult` sets it after every press. Lists with text rows (Statistics) are never kept, so their numbers stay live. With kept lists: Trophies 5 ms, Upgrades 8 ms.
+- The page timer runs every 500 ms (was 1000). `RGARemote.tick` still runs once a second.
+- After a press the page is looked at after 100, 200 and 300 ms and the first change speaks (was one look at 300 ms). "Cannot afford" is only said at the last look. Popup and toast are compared with their values at the moment of the press, which also ended the double "Dialog. X" plus "X dialog opened".
+- `RGAConfig.DEV` (false in a release build): remote control, autodump and click logging only run when true.
+- Timings jump around when the computer is busy (135 ms once, right after a build). Measure twice.
+- Java ran out of memory twice during release builds ("paging file is too small"); `-Xmx1g` in `tools/build.py` fixed it.
+
+## Locked buttons
+- The game shows "???" on things not unlocked yet; NVDA skips question marks, so the user heard only "unavailable, button". `controlLine` now says "Reincarnation, locked" for `4X::59` and "Locked" for any other button whose whole text is "???". Abdication has no "unavailable" because the game has it enabled, the same as for sighted players.

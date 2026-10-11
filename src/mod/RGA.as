@@ -24,23 +24,32 @@ class RGA
       // High priority so we see keys before the game does.
       stage.addEventListener(KeyboardEvent.KEY_DOWN,onKey,false,1000);
       doc.onAction = afterAction;
-      var t:Timer = new Timer(1000);
+      var t:Timer = new Timer(500);
       t.addEventListener(TimerEvent.TIMER,onTick);
       t.start();
    }
 
    // A named function, not an inline one: JPEXS miscompiles inline functions (VerifyError).
+   // Twice a second the page is read again, so values stay live and a new dialog is spoken
+   // soon. It costs 5 to 10 ms each time (measured), which the game does not notice.
    private static var ticks:int = 0;
 
    private static function onTick(e:TimerEvent) : void
    {
       refresh();
       ticks++;
-      if(ticks == 25 && RGADump.wanted())
+      if(RGAConfig.DEV)
       {
-         dumpTree();
+         // Research tools, left out of a release.
+         if(ticks == 50 && RGADump.wanted())
+         {
+            dumpTree();
+         }
+         if(ticks % 2 == 0)
+         {
+            RGARemote.tick(doc); // it counts in seconds
+         }
       }
-      RGARemote.tick(doc);
    }
 
    private static var lastError:String = "";
@@ -105,14 +114,20 @@ class RGA
    private static var headsBefore:Object = null;
    private static var resultTimer:Timer = null;
 
-   // After a button is pressed: give the game a moment to react, then say what happened.
+   private static var popupBefore:String = "";
+   private static var toastBefore:String = "";
+
+   // After a button is pressed: say what happened as soon as the game has reacted. The page is
+   // looked at 100, 200 and 300 ms after the press; the first look that shows a change speaks.
    public static function afterAction(l:DocLine) : void
    {
       pressedLine = l;
       headsBefore = heads();
+      popupBefore = lastPopup;
+      toastBefore = lastToast;
       if(resultTimer == null)
       {
-         resultTimer = new Timer(300,1);
+         resultTimer = new Timer(100,3);
          resultTimer.addEventListener(TimerEvent.TIMER,onResult);
       }
       resultTimer.reset();
@@ -121,18 +136,25 @@ class RGA
 
    private static function onResult(e:TimerEvent) : void
    {
-      var popup:String = lastPopup;
-      var toast:String = lastToast;
+      var last:Boolean = resultTimer.currentCount >= 3;
       RGPage.hoverAway();
+      RGPage.listStale = true;
       refresh();
-      // A dialog or notification that just appeared has been spoken already, and it is the result.
-      if(popup != lastPopup && lastPopup != "" || toast != lastToast && lastToast != "")
+      // A dialog or notification that appeared since the press has been spoken already, and it is the result.
+      if(popupBefore != lastPopup && lastPopup != "" || toastBefore != lastToast && lastToast != "")
       {
+         resultTimer.stop();
          return;
       }
       try
       {
-         Speech.say(result(pressedLine));
+         var r:String = result(pressedLine);
+         // "Cannot afford" means nothing changed, which is only certain at the last look.
+         if(last || r != "" && r.indexOf("Cannot afford") != 0)
+         {
+            resultTimer.stop();
+            Speech.say(r);
+         }
       }
       catch(err:Error)
       {
@@ -315,7 +337,12 @@ class RGA
       }
       else
       {
-         refresh();
+         // Keys that press something need the page as it is this instant. Keys that only move
+         // or read use the page the timer keeps up to date, so they answer at once.
+         if(e.keyCode == 13 || e.keyCode == 32 || e.keyCode == 85 || e.keyCode == 79)
+         {
+            refresh();
+         }
          used = doc.handleKey(e);
       }
       if(used)

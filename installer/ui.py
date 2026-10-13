@@ -42,6 +42,10 @@ user32.EnableWindow.argtypes = [wintypes.HWND, wintypes.BOOL]
 user32.MessageBoxW.argtypes = [wintypes.HWND, wintypes.LPCWSTR, wintypes.LPCWSTR, wintypes.UINT]
 user32.MessageBeep.argtypes = [wintypes.UINT]
 gdi32.CreateFontW.restype = wintypes.HFONT
+# Handles are 64-bit on a 64-bit Python; a call without argtypes squeezes every number into a
+# 32-bit int, and a big handle then fails with "OverflowError: int too long to convert".
+user32.GetDpiForWindow.argtypes = [wintypes.HWND]
+gdi32.DeleteObject.argtypes = [wintypes.HGDIOBJ]
 
 
 def text(s):

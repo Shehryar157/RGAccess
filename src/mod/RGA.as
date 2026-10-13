@@ -325,6 +325,7 @@ class RGA
       {
          stage.focus = stage;
       }
+      keysToLog = 5;
    }
 
    private static function onDeactivate(e:Event) : void
@@ -332,9 +333,18 @@ class RGA
       RGALog.write("window deactivated");
    }
 
+   // The first few keys after the window comes to the front are logged, so a player's log
+   // shows whether keys reach the mod at all after switching windows.
+   private static var keysToLog:int = 5;
+
    private static function onKey(e:KeyboardEvent) : void
    {
       var used:Boolean = false;
+      if(keysToLog > 0)
+      {
+         keysToLog--;
+         RGALog.write("key " + e.keyCode + (e.target is Stage ? "" : ", sent to " + e.target));
+      }
       if(e.keyCode == 123 && e.ctrlKey && e.shiftKey) // Control+Shift+F12: research dump
       {
          dumpTree();

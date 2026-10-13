@@ -118,7 +118,55 @@ class RGPage
          out.push(new DocLine("Nothing on screen yet","text","empty"));
       }
       listStale = false;
+      lastLines = out;
       return out;
+   }
+
+   // The page as last built, so a blocked press can say what can be pressed instead.
+   private static var lastLines:Array = null;
+
+   // The point inside a control where a press reaches it, or null when something covers it
+   // everywhere. Asks the engine what is on top at a few points, the centre first.
+   private static function reach(d:DisplayObject) : Point
+   {
+      var r:Rectangle = d.getBounds(Starling.current.stage);
+      var fx:Array = [0.5,0.25,0.75,0.5,0.5,0.1,0.9,0.1,0.9];
+      var fy:Array = [0.5,0.5,0.5,0.25,0.75,0.15,0.15,0.85,0.85];
+      for(var i:int = 0; i < fx.length; i++)
+      {
+         var p:Point = new Point(r.x + r.width * fx[i],r.y + r.height * fy[i]);
+         var hit:DisplayObject = Starling.current.stage.hitTest(p,true);
+         if(hit != null && inside(hit,d))
+         {
+            return p;
+         }
+      }
+      return null;
+   }
+
+   // Names of the page's buttons that can be pressed right now, at most five (the tutorial
+   // darkens the screen and leaves one or two). Empty when there are none or more than five.
+   private static function pressable() : Array
+   {
+      var a:Array = [];
+      if(lastLines == null)
+      {
+         return a;
+      }
+      for(var i:int = 0; i < lastLines.length; i++)
+      {
+         var l:DocLine = DocLine(lastLines[i]);
+         if(l.action == null || !(l.target is DisplayObject) || reach(DisplayObject(l.target)) == null)
+         {
+            continue;
+         }
+         a.push(l.text);
+         if(a.length > 5)
+         {
+            return [];
+         }
+      }
+      return a;
    }
 
    // A tutorial message can darken the whole screen except one button ("Click this button...")
@@ -137,10 +185,7 @@ class RGPage
             continue;
          }
          total++;
-         var d:DisplayObject = DisplayObject(l.target);
-         var r:Rectangle = d.getBounds(Starling.current.stage);
-         var hit:DisplayObject = Starling.current.stage.hitTest(new Point(r.x + r.width / 2,r.y + r.height / 2),true);
-         if(hit != null && inside(hit,d))
+         if(reach(DisplayObject(l.target)) != null)
          {
             reachable++;
             if(first == null)
@@ -934,7 +979,12 @@ class RGPage
             cover = hit == null ? "nothing touchable" : path(hit);
          }
       }
-      RGALog.write("click " + getQualifiedClassName(d) + " COVERED everywhere by " + cover + state(d) + ", bounds " + r);
+      var can:Array = pressable();
+      RGALog.write("click " + getQualifiedClassName(d) + " COVERED everywhere by " + cover + state(d) + ", bounds " + r + ", pressable: " + (can.length > 0 ? can.join(" | ") : "none or many"));
+      if(can.length > 0)
+      {
+         throw new Error("Blocked. Right now you can only press: " + can.join(", ") + ".");
+      }
       throw new Error("Blocked, something is on top of this button. If a dialog is open, close it first. It is at the top of the page.");
    }
 

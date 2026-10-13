@@ -110,3 +110,11 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 
 ## Locked buttons
 - The game shows "???" on things not unlocked yet; NVDA skips question marks, so the user heard only "unavailable, button". `controlLine` now says "Reincarnation, locked" for `4X::59` and "Locked" for any other button whose whole text is "???". Abdication has no "unavailable" because the game has it enabled, the same as for sighted players.
+
+## Tutorial and blocked presses (2026-10-13, from a player's log and the decompiled tutorial class)
+- The advisor (the first dialog class under "Dialogs seen") is a Feathers `Callout`; its `close` asks its content whether the step is done, else shows the next message.
+- Tutorial steps that darken the screen and wait for ONE thing: click the realm, open Buildings, buy a Farm, open Upgrades, buy the first upgrade (Crop Rotation), HOVER the Tax Collection spell, cast it, choose alignment, press Buy amount, HOVER the Fairy Trade Treaty upgrade. The hover steps are untested with the mod (T may or may not count as a hover).
+- A player's 0.1 log showed presses refused with "COVERED everywhere by Quad" inside the main screen during these steps, including Buy amount once, so `spotlight` (Continue presses the lit button) is not enough or not working. Still not seen live.
+- A fresh save cannot be made by moving `realm-grinder.sol` away: the game then loads an OLDER copy from its server (offline time was 75 minutes longer than the local file's) and writes it back. Do not try again; the local file was restored from `save_backups/SharedObjects_2026-10-13_before_tutorial`. Never use Hard Reset.
+- Since 0.1.2: `RGPage.reach` (9-point hit test) is shared by click and spotlight; a blocked press logs "pressable: ..." and says "Blocked. Right now you can only press: X" when 1 to 5 buttons are reachable (seen working with Offline Production: "only press: Close"). The first 5 keys after each window activation are logged ("key <code>").
+- To diagnose a stuck player: ask for Control+Shift+F12 while stuck (writes `rga_tree.txt` and `rga_page.txt` in the Local Store) plus `rga_debug.log`.

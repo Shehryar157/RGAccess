@@ -60,6 +60,8 @@ class RGA
    private static var lastError:String = "";
    private static var lastPopup:String = "";
    private static var lastToast:String = "";
+   // The last dialog or notification that was spoken, kept after it closes: F2 repeats it.
+   private static var lastMessage:String = "";
 
    private static function dumpTree() : void
    {
@@ -85,6 +87,7 @@ class RGA
             if(lastToast != "")
             {
                Speech.say(lastToast,false);
+               lastMessage = lastToast;
                doc.visit("h:" + RGPage.TOAST);
             }
          }
@@ -94,6 +97,7 @@ class RGA
             if(lastPopup != "")
             {
                Speech.say("Dialog. " + lastPopup,false);
+               lastMessage = lastPopup;
                doc.visit("h:dialog");
             }
          }
@@ -253,6 +257,7 @@ class RGA
       l.push(new DocLine("RG Access " + RGAConfig.VERSION + " help. Escape closes.","text","title"));
       l.push(new DocLine("Anywhere","h2","g:any"));
       l.push(new DocLine("F1: this help. Press it again, or Escape, to close.","text","k:f1"));
+      l.push(new DocLine("F2: repeat the last dialog or notification, even after it has closed.","text","k:f2"));
       l.push(new DocLine("Reading the page","h2","g:read"));
       l.push(new DocLine("Up and Down arrows: previous or next line.","text","k:ud"));
       l.push(new DocLine("Control with Up or Down: previous or next paragraph. Here every line is a paragraph, so it is the same as Up or Down.","text","k:cud"));
@@ -349,6 +354,13 @@ class RGA
       {
          dumpTree();
          Speech.say("Screen tree saved");
+         return;
+      }
+      if(e.keyCode == 113) // F2: repeat the last dialog or notification, even after it closed
+      {
+         Speech.say(lastMessage != "" ? lastMessage : "No dialog or notification yet");
+         e.stopImmediatePropagation();
+         e.preventDefault();
          return;
       }
       if(e.keyCode == 112 || (help != null && e.keyCode == 27)) // F1, or Escape in help

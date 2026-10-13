@@ -53,6 +53,7 @@ Windows may warn about the setup because it is not signed. Choose "More info", t
 ### Anywhere
 
 - F1: help, listing these keys. Press it again, or Escape, to close.
+- F2: repeat the last dialog or notification, even after it has closed.
 
 ### Reading the page
 

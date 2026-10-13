@@ -1,4 +1,5 @@
 import flash.display.Stage;
+import flash.events.Event;
 import flash.events.KeyboardEvent;
 import flash.events.TimerEvent;
 import flash.utils.Timer;
@@ -23,6 +24,10 @@ class RGA
 
       // High priority so we see keys before the game does.
       stage.addEventListener(KeyboardEvent.KEY_DOWN,onKey,false,1000);
+      // After Alt+Tab away and back, the window can come back with no keyboard focus, so
+      // key events never reach us. Take the focus again whenever the window is activated.
+      stage.addEventListener(Event.ACTIVATE,onActivate);
+      stage.addEventListener(Event.DEACTIVATE,onDeactivate);
       doc.onAction = afterAction;
       var t:Timer = new Timer(500);
       t.addEventListener(TimerEvent.TIMER,onTick);
@@ -310,6 +315,21 @@ class RGA
       help = new Doc();
       help.setLines(a);
       Speech.say(tip.join(". "));
+   }
+
+   private static function onActivate(e:Event) : void
+   {
+      var stage:Stage = e.target as Stage;
+      RGALog.write("window activated, focus was " + (stage != null && stage.focus != null ? String(stage.focus) : "none"));
+      if(stage != null)
+      {
+         stage.focus = stage;
+      }
+   }
+
+   private static function onDeactivate(e:Event) : void
+   {
+      RGALog.write("window deactivated");
    }
 
    private static function onKey(e:KeyboardEvent) : void

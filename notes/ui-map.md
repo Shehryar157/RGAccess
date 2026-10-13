@@ -126,3 +126,11 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - Restarting the game in the middle of a chain drops the rest of that chain (no more advisor messages), so a fix can only be checked on a fresh reset.
 - Not seen: alignment, Buy amount and faction steps (need 25000 coins). The faction step asks to hover the Fairy Trade Treaty; Continue would press it.
 - Still open: the first `press Close` on Offline Production right after start sometimes does nothing (seen again today); a player's log had the advisor covered by a stage Quad (probably Offline Production on top).
+
+## Text boxes (0.1.4, 2026-10-13)
+- A `feathers.controls::TextInput` is a page line with role "edit box" (text "empty" or its contents). Enter runs `RGA.startEdit`: `editing` is set, `setFocus()` is called, and until Escape or Enter the mod takes no navigation keys.
+- Seen on the Hard Reset confirmation: the box reports `focusOut` at once (game started by the remote; not known whether it also does with a person at the keyboard). So `RGA.typeKey` types into the box itself whenever a key arrives at the stage and not at a text field: charCode appended, Backspace removes. Setting `text` makes Feathers dispatch "change", which the game hears (the Erase button enables) and `onEditChange` speaks (letter, "X deleted").
+- Typing ends on Escape, Enter, or when the box leaves the stage (checked in `onTick`).
+- Tested through the remote: `stagekey <charCode> <keyCode>` dispatches a KeyboardEvent on the Flash stage, so it goes through `RGA.onKey` (also the way to test F1, F2, T, Escape). Typed R E X Backspace S E T: spoken correctly, button enabled. F2 repeated the last dialog. NOT tested: a real keyboard, and the case where the box does keep the native focus.
+- Only text box seen: Hard Reset confirmation. Import in Options probably has one (not opened).
+- The alignment tutorial ("Now you must choose your path") appeared after offline production gave 26,000 coins; not walked through yet.

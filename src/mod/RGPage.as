@@ -277,6 +277,16 @@ class RGPage
       {
          return;
       }
+      if(cls == "feathers.controls::TextInput")
+      {
+         // A text box (Hard Reset wants "RESET" typed). Enter on the line starts typing: RGA.startEdit.
+         var typed:String = clean(String(Object(obj)["text"]));
+         var ed:DocLine = new DocLine(typed == "" ? "empty" : typed,"button",nextKey("edit"),RGA.startEdit);
+         ed.role = "edit box";
+         ed.target = obj;
+         out.push(ed);
+         return;
+      }
       if(cls.indexOf("::Slider") > 0)
       {
          // A slider is dragged with the mouse; give it a lower and a higher button instead.

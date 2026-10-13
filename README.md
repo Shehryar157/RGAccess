@@ -54,6 +54,7 @@ Windows may warn about the setup because it is not signed. Choose "More info", t
 
 - F1: help, listing these keys. Press it again, or Escape, to close.
 - F2: repeat the last dialog or notification, even after it has closed.
+- Text boxes: press Enter on an edit box to type in it. Letters are spoken as you type. Escape or Enter finishes.
 
 ### Reading the page
 

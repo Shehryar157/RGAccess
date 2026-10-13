@@ -15,6 +15,7 @@ class RGA
    public static function start(stage:Stage) : void
    {
       doc = new Doc();
+      theStage = stage;
       var FileC:Class = getDefinitionByName("flash.filesystem.File") as Class;
       var helperDir:String = FileC["applicationDirectory"].nativePath + "\\RGAccess";
       RGALog.write("RGA " + RGAConfig.VERSION + " starting, helper " + helperDir);
@@ -41,6 +42,10 @@ class RGA
 
    private static function onTick(e:TimerEvent) : void
    {
+      if(editing != null && editing["stage"] == null)
+      {
+         endEdit(false); // the dialog with the box closed
+      }
       refresh();
       ticks++;
       if(RGAConfig.DEV)
@@ -130,6 +135,10 @@ class RGA
    // looked at 100, 200 and 300 ms after the press; the first look that shows a change speaks.
    public static function afterAction(l:DocLine) : void
    {
+      if(editing != null)
+      {
+         return; // Enter on a text box started typing; there is no result to announce
+      }
       pressedLine = l;
       headsBefore = heads();
       popupBefore = lastPopup;
@@ -258,6 +267,7 @@ class RGA
       l.push(new DocLine("Anywhere","h2","g:any"));
       l.push(new DocLine("F1: this help. Press it again, or Escape, to close.","text","k:f1"));
       l.push(new DocLine("F2: repeat the last dialog or notification, even after it has closed.","text","k:f2"));
+      l.push(new DocLine("Text boxes: press Enter on an edit box to type in it. Letters are spoken as you type. Escape or Enter finishes.","text","k:edit"));
       l.push(new DocLine("Reading the page","h2","g:read"));
       l.push(new DocLine("Up and Down arrows: previous or next line.","text","k:ud"));
       l.push(new DocLine("Control with Up or Down: previous or next paragraph. Here every line is a paragraph, so it is the same as Up or Down.","text","k:cud"));
@@ -326,7 +336,7 @@ class RGA
    {
       var stage:Stage = e.target as Stage;
       RGALog.write("window activated, focus was " + (stage != null && stage.focus != null ? String(stage.focus) : "none"));
-      if(stage != null)
+      if(stage != null && editing == null)
       {
          stage.focus = stage;
       }
@@ -342,9 +352,134 @@ class RGA
    // shows whether keys reach the mod at all after switching windows.
    private static var keysToLog:int = 5;
 
+   private static var theStage:Stage = null;
+   // The text box being typed into, or null. While it is set the mod takes no keys except
+   // Escape and Enter, so every letter reaches the box instead of moving the cursor.
+   private static var editing:Object = null;
+   private static var typedBefore:String = "";
+
+   // Enter on a text box line: give the box the keyboard.
+   public static function startEdit(target:Object, ctrl:Boolean, shift:Boolean) : void
+   {
+      editing = target;
+      typedBefore = String(target["text"]);
+      target.addEventListener("change",onEditChange);
+      target.addEventListener("enter",onEditEnter);
+      target.addEventListener("focusOut",onEditOut);
+      target["setFocus"]();
+      Speech.say("Typing" + (typedBefore == "" ? "" : ", " + typedBefore) + ". Press Escape or Enter when you are done.");
+   }
+
+   // The box's text changed: speak the letter typed or deleted, like a screen reader's key echo.
+   private static function onEditChange(e:Object) : void
+   {
+      if(editing == null)
+      {
+         return;
+      }
+      var now:String = String(editing["text"]);
+      var was:String = typedBefore;
+      typedBefore = now;
+      if(now.length == was.length + 1 && now.indexOf(was) == 0)
+      {
+         Speech.say(now.charAt(now.length - 1) == " " ? "space" : now.charAt(now.length - 1));
+      }
+      else if(now.length == was.length - 1 && was.indexOf(now) == 0)
+      {
+         Speech.say((was.charAt(was.length - 1) == " " ? "space" : was.charAt(was.length - 1)) + " deleted");
+      }
+      else
+      {
+         Speech.say(now == "" ? "empty" : now);
+      }
+   }
+
+   private static function onEditEnter(e:Object) : void
+   {
+      endEdit(true);
+   }
+
+   // The game's box does not always keep the keyboard (seen: it loses it at once). That does
+   // not end typing: onKey then types into the box itself.
+   private static function onEditOut(e:Object) : void
+   {
+      RGALog.write("edit box lost the keyboard, typing through the mod");
+   }
+
+   // A key while typing, when it arrived at the stage and not at the box: do the box's work.
+   private static function typeKey(e:KeyboardEvent) : void
+   {
+      var text:String = String(editing["text"]);
+      if(e.keyCode == 8)
+      {
+         if(text == "")
+         {
+            Speech.say("empty");
+            return;
+         }
+         text = text.substr(0,text.length - 1);
+      }
+      else if(e.charCode >= 32 && !e.ctrlKey && !e.altKey)
+      {
+         text += String.fromCharCode(e.charCode);
+      }
+      else
+      {
+         return;
+      }
+      // Setting the text makes the box announce the change itself: the game hears it (Hard
+      // Reset enables its button) and onEditChange speaks the letter.
+      editing["text"] = text;
+   }
+
+   private static function endEdit(byKey:Boolean) : void
+   {
+      if(editing == null)
+      {
+         return;
+      }
+      var box:Object = editing;
+      editing = null;
+      box.removeEventListener("change",onEditChange);
+      box.removeEventListener("enter",onEditEnter);
+      box.removeEventListener("focusOut",onEditOut);
+      var text:String = String(box["text"]);
+      if(byKey)
+      {
+         try
+         {
+            box["clearFocus"]();
+         }
+         catch(err:Error)
+         {
+         }
+         if(theStage != null)
+         {
+            theStage.focus = theStage;
+         }
+      }
+      Speech.say("Typing finished, " + (text == "" ? "empty" : text));
+   }
+
    private static function onKey(e:KeyboardEvent) : void
    {
       var used:Boolean = false;
+      if(editing != null)
+      {
+         if(e.keyCode == 27 || e.keyCode == 13)
+         {
+            endEdit(true);
+            e.stopImmediatePropagation();
+            e.preventDefault();
+         }
+         else if(e.target is Stage)
+         {
+            typeKey(e);
+            e.stopImmediatePropagation();
+            e.preventDefault();
+         }
+         return;
+      }
       if(keysToLog > 0)
       {
          keysToLog--;

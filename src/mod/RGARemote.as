@@ -147,6 +147,14 @@ class RGARemote
          }
          return "full build " + full / 10 + " ms, kept lists " + (getTimer() - t0) / 10 + " ms, " + doc.lines.length + " lines";
       }
+      if(verb == "stagekey")
+      {
+         // stagekey <charCode> <keyCode>: a real key event on the Flash stage, so it goes through
+         // RGA.onKey like the keyboard (F2 = 0 113, Escape = 27 27, letter R = 82 82).
+         var ck:Array = arg.split(" ");
+         Starling.current.nativeStage.dispatchEvent(new KeyboardEvent(KeyboardEvent.KEY_DOWN,true,true,int(ck[0]),int(ck[1])));
+         return "ok";
+      }
       if(verb == "settext")
       {
          // settext <text>: put text into the topmost text box on screen (Hard Reset wants "RESET").

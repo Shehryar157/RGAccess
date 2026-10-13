@@ -74,6 +74,28 @@ class RGARemote
       RGALog.write("remote: " + queue.length + " commands");
    }
 
+   // The last (topmost) text box under obj, or null.
+   private static function findInput(obj:Object) : Object
+   {
+      if(getQualifiedClassName(obj) == "feathers.controls::TextInput")
+      {
+         return obj;
+      }
+      if(!obj.hasOwnProperty("numChildren"))
+      {
+         return null;
+      }
+      for(var i:int = int(obj["numChildren"]) - 1; i >= 0; i--)
+      {
+         var found:Object = findInput(obj["getChildAt"](i));
+         if(found != null)
+         {
+            return found;
+         }
+      }
+      return null;
+   }
+
    private static function run(cmd:String, doc:Doc) : String
    {
       var sp:int = cmd.indexOf(" ");
@@ -124,6 +146,18 @@ class RGARemote
             RGPage.build();
          }
          return "full build " + full / 10 + " ms, kept lists " + (getTimer() - t0) / 10 + " ms, " + doc.lines.length + " lines";
+      }
+      if(verb == "settext")
+      {
+         // settext <text>: put text into the topmost text box on screen (Hard Reset wants "RESET").
+         var box:Object = findInput(Starling.current.stage);
+         if(box == null)
+         {
+            return "no text box";
+         }
+         box["text"] = arg;
+         box.dispatchEventWith("change");
+         return "text set";
       }
       if(verb == "click")
       {

@@ -1,4 +1,5 @@
 import feathers.controls.Button;
+import feathers.controls.Callout;
 import feathers.controls.GroupedList;
 import feathers.controls.Label;
 import feathers.controls.renderers.IGroupedListHeaderRenderer;
@@ -40,6 +41,7 @@ class RGPage
       var i:int;
       var j:int;
       var cont:DocLine = null;
+      var stays:Boolean = false;
       var topName:String = "";
       counts = new Object();
       manaDone = false;
@@ -92,6 +94,10 @@ class RGPage
                go.target = stage.getChildAt(i);
                part.push(go);
                cont = go;
+               // The advisor is a Callout. For a step that waits for one action ("click the
+               // Realm") the game switches off closing it by a click, so Continue would do nothing.
+               var co:Callout = stage.getChildAt(i) as Callout;
+               stays = co != null && !co.closeOnTouchBeganOutside && !co.closeOnTouchEndedOutside;
             }
             pop = pop.concat(part);
          }
@@ -112,6 +118,14 @@ class RGPage
       if(cont != null)
       {
          spotlight(cont,out,mainAt);
+         if(stays && cont.target is Callout)
+         {
+            // No lit button was found either: say so instead of offering a dead button.
+            cont.text = "No Continue button: this message closes by itself when you do what it asks.";
+            cont.kind = "text";
+            cont.action = null;
+            cont.target = null;
+         }
       }
       if(out.length == 0)
       {
@@ -144,6 +158,23 @@ class RGPage
       return null;
    }
 
+   // True if a press on this line would get through. A list item counts when its row is on
+   // screen now and uncovered (the tutorial lights up one upgrade).
+   private static function canReach(l:DocLine) : Boolean
+   {
+      if(l.target is DisplayObject)
+      {
+         return reach(DisplayObject(l.target)) != null;
+      }
+      var it:ListItem = l.target as ListItem;
+      if(it == null || it.index < 0)
+      {
+         return false;
+      }
+      var row:Object = findRow(it.list,it.item);
+      return row != null && reach(DisplayObject(row)) != null;
+   }
+
    // Names of the page's buttons that can be pressed right now, at most five (the tutorial
    // darkens the screen and leaves one or two). Empty when there are none or more than five.
    private static function pressable() : Array
@@ -156,7 +187,7 @@ class RGPage
       for(var i:int = 0; i < lastLines.length; i++)
       {
          var l:DocLine = DocLine(lastLines[i]);
-         if(l.action == null || !(l.target is DisplayObject) || reach(DisplayObject(l.target)) == null)
+         if(l.action == null || !canReach(l))
          {
             continue;
          }
@@ -180,12 +211,12 @@ class RGPage
       for(var i:int = from; i < lines.length; i++)
       {
          var l:DocLine = DocLine(lines[i]);
-         if(l.action == null || !(l.target is DisplayObject))
+         if(l.action == null || l == go)
          {
             continue;
          }
          total++;
-         if(reach(DisplayObject(l.target)) != null)
+         if(canReach(l))
          {
             reachable++;
             if(first == null)

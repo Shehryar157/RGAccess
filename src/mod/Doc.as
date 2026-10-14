@@ -108,7 +108,7 @@ class Doc
          {
             if(DocLine(lines[i]).key == wantKey)
             {
-               line = i;
+               line = intoPanel(i);
                col = 0;
                aLine = -1;
                wantTries = 0;
@@ -217,7 +217,12 @@ class Doc
          jump(shift ? -1 : 1,"building","building");
          return true;
       }
-      if(k == 82 && !ctrl) // R: the Toolbar section
+      if(k == 82 && !ctrl) // R: the Resources section
+      {
+         jumpToKey("h:resources","No resources on this screen");
+         return true;
+      }
+      if(k == 76 && !ctrl) // L: the Toolbar section
       {
          jumpToKey("h:toolbar","No toolbar on this screen");
          return true;
@@ -308,7 +313,7 @@ class Doc
          l = lines[i];
          if(l.key == headKey || l.isHeading && l.text == headText)
          {
-            line = i;
+            line = intoPanel(i);
             col = 0;
             aLine = -1;
             readCurrent();
@@ -332,9 +337,50 @@ class Doc
       Speech.say(name + " is not on this screen");
    }
 
+   // The Upgrades panel: its heading, and the tab that opens and closes it.
+   private static const UPGRADES_HEAD:String = "h:]!6::>F";
+   private static const UPGRADES_TAB:String = "\"#:: !D#0";
+
+   // Landing on the Upgrades panel puts the cursor on its first sub-heading instead, which
+   // is "Unpurchased Upgrades" (or "Purchased Upgrades" once everything is bought).
+   private function intoPanel(i:int) : int
+   {
+      if(DocLine(lines[i]).key != UPGRADES_HEAD)
+      {
+         return i;
+      }
+      for(var j:int = i + 1; j < lines.length && j <= i + 3; j++)
+      {
+         if(DocLine(lines[j]).kind == "h2")
+         {
+            return j;
+         }
+      }
+      return i;
+   }
+
    private function activate(ctrl:Boolean, shift:Boolean) : void
    {
+      // Enter on the Upgrades tab while the panel is closed: once it opens, go into it,
+      // the same as the U key. When it is open, the tab closes it and the cursor stays.
+      if(cur().key == UPGRADES_TAB && indexOf(UPGRADES_HEAD) < 0)
+      {
+         wantKey = UPGRADES_HEAD;
+         wantTries = 5;
+      }
       press(cur(),ctrl,shift);
+   }
+
+   private function indexOf(key:String) : int
+   {
+      for(var i:int = 0; i < lines.length; i++)
+      {
+         if(DocLine(lines[i]).key == key)
+         {
+            return i;
+         }
+      }
+      return -1;
    }
 
    private function press(l:DocLine, ctrl:Boolean, shift:Boolean) : void

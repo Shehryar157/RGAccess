@@ -4,6 +4,7 @@ import flash.events.KeyboardEvent;
 import flash.events.TimerEvent;
 import flash.utils.Timer;
 import flash.utils.getDefinitionByName;
+import flash.utils.getTimer;
 
 // RGAccess entry point, called once from Main.init.
 class RGA
@@ -30,15 +31,20 @@ class RGA
       stage.addEventListener(Event.ACTIVATE,onActivate);
       stage.addEventListener(Event.DEACTIVATE,onDeactivate);
       doc.onAction = afterAction;
-      var t:Timer = new Timer(500);
-      t.addEventListener(TimerEvent.TIMER,onTick);
-      t.start();
+      pageTimer = new Timer(500);
+      pageTimer.addEventListener(TimerEvent.TIMER,onTick);
+      pageTimer.start();
    }
 
    // A named function, not an inline one: JPEXS miscompiles inline functions (VerifyError).
    // Twice a second the page is read again, so values stay live and a new dialog is spoken
-   // soon. It costs 5 to 10 ms each time (measured), which the game does not notice.
+   // soon. It usually costs 5 to 10 ms (measured), which the game does not notice. A big
+   // screen (Trophies, Statistics) or a slow computer can cost more, so the wait before the
+   // next read grows with what the last one cost: the mod never takes more than about 4% of
+   // the game's time. In the background the page is read only every 2 seconds.
    private static var ticks:int = 0;
+   private static var pageTimer:Timer = null;
+   private static var active:Boolean = true;
 
    private static function onTick(e:TimerEvent) : void
    {
@@ -46,8 +52,13 @@ class RGA
       {
          endEdit(false); // the dialog with the box closed
       }
-      refresh();
       ticks++;
+      if(active || ticks % 4 == 0)
+      {
+         var t0:int = getTimer();
+         refresh();
+         pageTimer.delay = Math.max(500,Math.min(2000,(getTimer() - t0) * 25));
+      }
       if(RGAConfig.DEV)
       {
          // Research tools, left out of a release.
@@ -275,7 +286,7 @@ class RGA
       l.push(new DocLine("Home and End: start or end of the line. With Control: top or bottom of the page.","text","k:he"));
       l.push(new DocLine("Shift with any movement key: select text. Control C copies, Control A selects all.","text","k:sel"));
       l.push(new DocLine("H and Shift H: next or previous heading.","text","k:h"));
-      l.push(new DocLine("R: jump to the Toolbar. Resources (coins, production, gems, rubies, mana) is the heading just before it: Shift H.","text","k:r"));
+      l.push(new DocLine("R: jump to Resources (coins, production, gems, rubies, mana). L: jump to the Toolbar.","text","k:r"));
       l.push(new DocLine("S: jump to Spells. U: jump to Upgrades, opening the panel if it is closed.","text","k:su"));
       l.push(new DocLine("O: open Options. If it is already open, jump to its top.","text","k:o"));
       l.push(new DocLine("Tab and Shift Tab: next or previous button.","text","k:tab"));
@@ -341,10 +352,13 @@ class RGA
          stage.focus = stage;
       }
       keysToLog = 5;
+      active = true;
+      refresh(); // the page may be up to 2 seconds old
    }
 
    private static function onDeactivate(e:Event) : void
    {
+      active = false;
       RGALog.write("window deactivated");
    }
 

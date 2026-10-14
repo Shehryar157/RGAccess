@@ -95,6 +95,7 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - Audio: Check "Mute", Label "Volume: 50%", and a `feathers.controls::Slider`. The slider becomes two lines, "Volume lower" and "Volume higher" (`RGPage.slide`, one tenth of the range, sets `value`; the game reacts and the label updates). Verified 50 -> 60 -> 50. Each press re-announces "Dialog. Audio Volume: 60%" because the dialog text changed. Any other Slider gets the same treatment, named after the text line before it.
 
 ## Jump keys (added 2026-10-12, confirmed in the speech log)
+- 2026-10-14 (user): R = Resources again, L = Toolbar (B stays Buildings; user rule: never take a key already in use). U, and Enter on the Upgrades tab while the panel is closed, land on the panel's first h2 ("Unpurchased Upgrades"), `Doc.intoPanel`. Tested by remote: R, L, U.
 - R: Toolbar heading (`h:toolbar`; it was Resources until the user changed it, 2026-10-12). S: Spells heading (`h:]!6::3!5`). U: Upgrades panel heading (`h:]!6::>F`); when the panel is closed, presses the Upgrades tab (`"#:: !D#0`) and `Doc.wantKey` moves the cursor to the heading once it appears. O: the heading "Options dialog" when open, else presses the icon button `4X::2!Z#0`; the dialog takes the cursor by itself (`Doc.goTo`). Statistics has no key (it was on S for a moment; its button is `4X::9P#0`).
 - Opening a dialog this way speaks twice: "Dialog. Statistics" and then "Statistics dialog opened". Harmless, not fixed.
 
@@ -102,7 +103,7 @@ Status: the generic builder is confirmed working in the game (2026-10-11): dialo
 - Measured with remote `time` (page build, average of 10): main screen 6 ms, Upgrades 17 ms, Trophies 47 ms, Options 29 ms. Almost all of the difference is `walkList` (every item goes through a borrowed row and `validate()`).
 - Before, `RGA.onKey` rebuilt the page before EVERY key. Now only keys that press something do (Enter, Space, U, O); moving and reading use the page the timer keeps.
 - `walkList` keeps a list of items for 2 s (`listCache`, keyed by list, checked by `listSig`: item count and collapsed state per section). `RGPage.listStale = true` forces a re-read; `RGA.onResult` sets it after every press. Lists with text rows (Statistics) are never kept, so their numbers stay live. With kept lists: Trophies 5 ms, Upgrades 8 ms.
-- The page timer runs every 500 ms (was 1000). `RGARemote.tick` still runs once a second.
+- The page timer runs every 500 ms (was 1000). Since 2026-10-14 its delay is 25 x the last build's cost, 500 to 2000 ms (mod stays under ~4% of game time), and while the window is inactive the page is built only every 4th tick; activation rebuilds at once. `RGARemote.tick` still runs once a second.
 - After a press the page is looked at after 100, 200 and 300 ms and the first change speaks (was one look at 300 ms). "Cannot afford" is only said at the last look. Popup and toast are compared with their values at the moment of the press, which also ended the double "Dialog. X" plus "X dialog opened".
 - `RGAConfig.DEV` (false in a release build): remote control, autodump and click logging only run when true.
 - Timings jump around when the computer is busy (135 ms once, right after a build). Measure twice.

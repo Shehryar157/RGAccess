@@ -1189,11 +1189,20 @@ class RGPage
       return out;
    }
 
-   // The game's texts (labels, dialogs, tooltips) talk about the mouse ("CTRL+Click", "Click here to...");
-   // say the key that does it here.
+   // The game's texts (labels, dialogs, tooltips) name mouse and keyboard shortcuts. The user
+   // asked for them to be left out (2026-10-14): " (CTRL+Click)", ", (CTRL+SHIFT+Click)",
+   // ", or by Ctrl+Clicking the spell", "CTRL+Click to set this spell as Primary." and
+   // " (CTRL+F)" go. A shortcut that is the only way a sentence explains something ("Ctrl+Click
+   // again to...") stays, said with the key that does it here.
    // Only the whole word: "Clicking Reward" is the game's name for something and stays.
    private static function keys(s:String) : String
    {
+      var mods:String = "(?:CTRL\\+SHIFT\\+|CTRL\\+|SHIFT\\+)";
+      s = s.replace(new RegExp(",? ?\\(" + mods + "(?:Click|F)\\)","gi"),"");
+      // The game never closes the bracket in "Cost for 85 (MAX, (CTRL+SHIFT+Click): ...".
+      s = s.replace(new RegExp("\\((MAX): ","g"),"($1): ");
+      s = s.replace(new RegExp(",? or by " + mods + "Clicking (?:the spell|them)","gi"),"");
+      s = s.replace(new RegExp(" ?" + mods + "Click to [^.]*\\.","gi"),"");
       s = s.replace(new RegExp("CTRL\\+SHIFT\\+Click","gi"),"Control Shift Enter");
       s = s.replace(new RegExp("CTRL\\+Click","gi"),"Control Enter");
       s = s.replace(new RegExp("SHIFT\\+Click","gi"),"Shift Enter");

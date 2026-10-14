@@ -2,6 +2,7 @@ import feathers.controls.Button;
 import feathers.controls.Callout;
 import feathers.controls.GroupedList;
 import feathers.controls.Label;
+import feathers.controls.ProgressBar;
 import feathers.controls.renderers.IGroupedListHeaderRenderer;
 import feathers.controls.renderers.IGroupedListItemRenderer;
 import flash.geom.Point;
@@ -61,6 +62,7 @@ class RGPage
          }
          dialogName = "";
          walk(top,part);
+         part = table(part);
          if(part.length > 0)
          {
             var hasButton:Boolean = false;
@@ -244,8 +246,16 @@ class RGPage
          var t:String = keys(clean(String(Object(obj)["text"])));
          if(t != "")
          {
-            out.push(new DocLine(t,"text",nextKey("t")));
+            var tl:DocLine = new DocLine(t,"text",nextKey("t"));
+            tl.place = obj;
+            out.push(tl);
          }
+         return;
+      }
+      if(obj is ProgressBar)
+      {
+         // A bar on its own, not inside a control (those are read with their control).
+         out.push(new DocLine("Progress " + Math.round(percent(ProgressBar(obj))) + "%","text",nextKey("bar")));
          return;
       }
       var c:DisplayObjectContainer = obj as DisplayObjectContainer;
@@ -591,6 +601,183 @@ class RGPage
       return tip;
    }
 
+   // A dialog laid out as a table (the Royal Market: "Faction", "Bonus", "Cost in FC", then a
+   // row per faction with a BUY button) would read cell by cell, and the numbers lose their
+   // column. A table is found by position: a row of two or more texts, with at least two rows
+   // under it whose texts each sit under one of them. Every such row becomes one line,
+   // "Faction: Fairy (0), Bonus: 10%, Cost in FC: 1x 20, BUY", which is the row's button
+   // when it has exactly one. The heading row itself is dropped.
+   private static function table(part:Array) : Array
+   {
+      var stage:DisplayObject = Starling.current.stage;
+      var cells:Array = [];
+      var i:int;
+      var j:int;
+      for(i = 0; i < part.length; i++)
+      {
+         var l:DocLine = part[i];
+         var d:DisplayObject = (l.place != null ? l.place : l.target) as DisplayObject;
+         if(d == null || l.isHeading || d.stage == null)
+         {
+            continue;
+         }
+         var r:Rectangle = d.getBounds(stage);
+         cells.push({line:l, x:r.x + r.width / 2, y:r.y + r.height / 2});
+      }
+      cells.sort(byCellY);
+      var rows:Array = [];
+      var row:Array = null;
+      for(i = 0; i < cells.length; i++)
+      {
+         if(row == null || Math.abs(cells[i].y - row[0].y) > 8)
+         {
+            row = [];
+            rows.push(row);
+         }
+         row.push(cells[i]);
+      }
+      for(i = 0; i < rows.length; i++)
+      {
+         rows[i].sort(byCellX);
+      }
+      for(var h:int = 0; h < rows.length; h++)
+      {
+         var head:Array = rows[h];
+         if(head.length < 2 || !allText(head))
+         {
+            continue;
+         }
+         var body:Array = [];
+         for(j = h + 1; j < rows.length && columnsOf(rows[j],head); j++)
+         {
+            body.push(rows[j]);
+         }
+         if(body.length >= 2)
+         {
+            return tableLines(part,head,body);
+         }
+      }
+      return part;
+   }
+
+   private static function byCellY(a:Object, b:Object) : int
+   {
+      return a.y < b.y ? -1 : (a.y > b.y ? 1 : 0);
+   }
+
+   private static function byCellX(a:Object, b:Object) : int
+   {
+      return a.x < b.x ? -1 : (a.x > b.x ? 1 : 0);
+   }
+
+   private static function allText(row:Array) : Boolean
+   {
+      for(var i:int = 0; i < row.length; i++)
+      {
+         if(DocLine(row[i].line).action != null)
+         {
+            return false;
+         }
+      }
+      return true;
+   }
+
+   // Gives every text of the row its column (cell.col, the heading's index) and answers
+   // whether the row belongs to the table: at least two texts, each close under a heading.
+   // Buttons may sit anywhere (the BUY column has no heading).
+   private static function columnsOf(row:Array, head:Array) : Boolean
+   {
+      var gap:Number = 100000;
+      var i:int;
+      for(i = 1; i < head.length; i++)
+      {
+         gap = Math.min(gap,head[i].x - head[i - 1].x);
+      }
+      var texts:int = 0;
+      for(i = 0; i < row.length; i++)
+      {
+         if(DocLine(row[i].line).action != null)
+         {
+            continue;
+         }
+         var best:int = -1;
+         var dist:Number = gap / 2;
+         for(var k:int = 0; k < head.length; k++)
+         {
+            if(Math.abs(row[i].x - head[k].x) < dist)
+            {
+               dist = Math.abs(row[i].x - head[k].x);
+               best = k;
+            }
+         }
+         if(best < 0)
+         {
+            return false;
+         }
+         row[i].col = best;
+         texts++;
+      }
+      return texts >= 2;
+   }
+
+   private static function tableLines(part:Array, head:Array, body:Array) : Array
+   {
+      var used:Dictionary = new Dictionary();
+      var made:Array = [];
+      var i:int;
+      var j:int;
+      for(i = 0; i < head.length; i++)
+      {
+         used[head[i].line] = true;
+      }
+      for(i = 0; i < body.length; i++)
+      {
+         var says:Array = [];
+         var buttons:Array = [];
+         var first:DocLine = null;
+         for(j = 0; j < body[i].length; j++)
+         {
+            var l:DocLine = body[i][j].line;
+            used[l] = true;
+            if(l.action != null)
+            {
+               buttons.push(l);
+               continue;
+            }
+            if(first == null)
+            {
+               first = l;
+            }
+            says.push(DocLine(head[body[i][j].col].line).text + ": " + l.text);
+         }
+         if(buttons.length == 1)
+         {
+            DocLine(buttons[0]).text = says.join(", ") + ", " + DocLine(buttons[0]).text;
+            made.push(buttons[0]);
+         }
+         else
+         {
+            first.text = says.join(", ");
+            made.push(first);
+            made = made.concat(buttons);
+         }
+      }
+      var out:Array = [];
+      for(i = 0; i < part.length; i++)
+      {
+         if(used[part[i]] != true)
+         {
+            out.push(part[i]);
+         }
+         else if(made != null)
+         {
+            out = out.concat(made); // the whole table goes where its first line was
+            made = null;
+         }
+      }
+      return out;
+   }
+
    private static function byPosition(a:DisplayObject, b:DisplayObject) : int
    {
       if(Math.abs(a.y - b.y) > 5)
@@ -803,6 +990,7 @@ class RGPage
       {
          text += ", unavailable";
       }
+      text += barText(obj,cls);
       var l:DocLine = new DocLine(text,kind,nextKey(cls),click);
       l.target = obj;
       // A tick box or one of a group of choices says which state it is in.
@@ -834,6 +1022,59 @@ class RGPage
          l.action = null;
       }
       return l;
+   }
+
+   // A progress bar drawn inside a control, as a counter: ", 45% full" and the like.
+   // A spell button's bar shows the time left on the spell while it is active (hidden
+   // otherwise); the mana orb's bar shows how full the mana is.
+   private static function barText(obj:DisplayObject, cls:String) : String
+   {
+      var bar:ProgressBar = findBar(obj);
+      if(bar == null)
+      {
+         return "";
+      }
+      var pct:int = Math.round(percent(bar));
+      if(cls == "\"#::5W")
+      {
+         return ", active, " + pct + "% of its time left";
+      }
+      if(cls == MANA)
+      {
+         return ", " + pct + "% full";
+      }
+      return ", bar " + pct + "%";
+   }
+
+   private static function findBar(obj:DisplayObject) : ProgressBar
+   {
+      if(!obj.visible)
+      {
+         return null;
+      }
+      if(obj is ProgressBar)
+      {
+         return ProgressBar(obj);
+      }
+      var c:DisplayObjectContainer = obj as DisplayObjectContainer;
+      if(c != null)
+      {
+         for(var i:int = 0; i < c.numChildren; i++)
+         {
+            var b:ProgressBar = findBar(c.getChildAt(i));
+            if(b != null)
+            {
+               return b;
+            }
+         }
+      }
+      return null;
+   }
+
+   private static function percent(bar:ProgressBar) : Number
+   {
+      var range:Number = bar.maximum - bar.minimum;
+      return range <= 0 ? 0 : Math.max(0,Math.min(100,(bar.value - bar.minimum) * 100 / range));
    }
 
    private static function collectLabels(obj:DisplayObject, out:Array) : void

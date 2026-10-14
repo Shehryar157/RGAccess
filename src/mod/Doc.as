@@ -15,6 +15,8 @@ class DocLine
    public var action:Function;
    // The game object this line stands for. When set, action is called as action(target, ctrl, shift).
    public var target:Object = null;
+   // For a text line: the label it was read from, so its place on screen is known (tables).
+   public var place:Object = null;
 
    public function DocLine(text:String, kind:String, key:String, action:Function = null)
    {

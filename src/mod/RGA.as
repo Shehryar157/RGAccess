@@ -298,6 +298,7 @@ class RGA
       l.push(new DocLine("Enter on a building: buy it, using the game's buy mode.","text","k:buy"));
       l.push(new DocLine("Control Enter: buy 10. Shift Enter: buy 100. Control Shift Enter: buy as many as you can afford.","text","k:buymod"));
       l.push(new DocLine("T on a building reads what each of those would cost.","text","k:buytip"));
+      l.push(new DocLine("D: read the tooltip without its title and without the costs for buying several, for example what a building produces. Works on anything that has a tooltip.","text","k:desc"));
       l.push(new DocLine("After Enter, the mod reads the button again if it changed, for example a building with its new count and price. It says nothing if nothing changed.","text","k:result"));
       d.lines = l;
       return d;
@@ -341,6 +342,25 @@ class RGA
       help = new Doc();
       help.setLines(a);
       Speech.say(tip.join(". "));
+   }
+
+   // D: the tooltip minus its title (the line already says it) and the "Cost for 10: ..." lines
+   // of a building, so what is left is what the thing does: for a building, what one produces
+   // (so also the next one) and what all of them produce. The user asked for this (2026-10-14).
+   private static function sayDescription() : void
+   {
+      var l:DocLine = doc.lines.length > doc.line ? DocLine(doc.lines[doc.line]) : null;
+      var tip:Array = l == null || l.target == null ? [] : RGPage.tooltip(l.target);
+      var a:Array = [];
+      for(var i:int = 1; i < tip.length; i++)
+      {
+         var s:String = tip[i];
+         if(s.indexOf("Cost for ") != 0)
+         {
+            a.push(new RegExp("[.!?)]$").test(s) ? s : s + ".");
+         }
+      }
+      Speech.say(a.length == 0 ? "No description" : a.join(" "));
    }
 
    private static function onActivate(e:Event) : void
@@ -524,6 +544,11 @@ class RGA
       else if(e.keyCode == 84 && !e.ctrlKey && !e.altKey) // T: speak the tooltip of the current line; Shift+T: open it as a page
       {
          showTooltip(e.shiftKey);
+         used = true;
+      }
+      else if(e.keyCode == 68 && !e.ctrlKey && !e.altKey && !e.shiftKey) // D: the tooltip without its title and buy costs
+      {
+         sayDescription();
          used = true;
       }
       else

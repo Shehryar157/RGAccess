@@ -33,3 +33,4 @@ In `<game>\RGAccess`: `rga_speech.log`, the speech helper's log (which screen re
 - Remote `time` builds the page 10 times each way and answers with the average milliseconds.
 - Remote `key <code>` types a key on the page through `Doc.handleKey` (80 = P) and `where` types nothing; both answer with the line the cursor is on (added 2026-10-12). Keys handled in `RGA.onKey` itself (F1, T, Escape) still cannot be typed.
 - When the user is playing, their own key presses move the cursor between your commands: trust `rga_speech.log` over `where`.
+- Remote keys: `key N` only reaches `Doc.handleKey` (page moves, H, B, R...). Keys handled in `RGA.onKey` (T, D, F1, F2, Escape) need `stagekey <charCode> <keyCode>`, SPACE-separated, e.g. `stagekey 68 68` for D. A comma ("100,68") parses as one number and sends key 0 (seen in the log as "key 0"). It cannot hold Shift, so Shift+B and the like cannot be tested; move with `key 38`/`key 40` instead.

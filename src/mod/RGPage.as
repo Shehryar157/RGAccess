@@ -1024,26 +1024,14 @@ class RGPage
       return l;
    }
 
-   // A progress bar drawn inside a control, as a counter: ", 45% full" and the like.
-   // A spell button's bar shows the time left on the spell while it is active (hidden
-   // otherwise); the mana orb's bar shows how full the mana is.
+   // A progress bar drawn inside a control, as a counter (", bar 45%"). Not for the two the
+   // game already says in words: the mana orb's fill is its "608/1000" and a spell button's
+   // bar is the time left it writes ("16s"). The user asked for counters only where sighted
+   // players get the same (2026-10-14).
    private static function barText(obj:DisplayObject, cls:String) : String
    {
-      var bar:ProgressBar = findBar(obj);
-      if(bar == null)
-      {
-         return "";
-      }
-      var pct:int = Math.round(percent(bar));
-      if(cls == "\"#::5W")
-      {
-         return ", active, " + pct + "% of its time left";
-      }
-      if(cls == MANA)
-      {
-         return ", " + pct + "% full";
-      }
-      return ", bar " + pct + "%";
+      var bar:ProgressBar = cls == MANA || cls == "\"#::5W" ? null : findBar(obj);
+      return bar == null ? "" : ", bar " + Math.round(percent(bar)) + "%";
    }
 
    private static function findBar(obj:DisplayObject) : ProgressBar

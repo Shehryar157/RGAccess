@@ -40,3 +40,12 @@ Bash heredocs choke on the scrambled names (the section-sign and quote character
 - `tools/build_release.py` leaves the RELEASE variant in `build/`; run `python tools/build.py` afterwards to get the development build (remote control on) back into the game.
 - Build with the game closed: with it open, Java ran out of memory ("paging file is too small"). `-Xmx1g` is set in `tools/build.py`.
 - Scripted edits of files with scrambled names: write a small Python file with the Write tool and run it. A bash heredoc with the script inside failed on the quotes.
+
+## Installer OverflowError (2026-10-15)
+- A player saw "Setup failed: ArgumentError('argument 1: OverflowError: int too long to convert')" (setup version unknown; 0.1.1 had already declared GetDpiForWindow and DeleteObject). Cause: a ctypes call WITHOUT argtypes converts a Python int to a 32-bit C int, so a 64-bit handle overflows. Calls WITH argtypes never raise this (tested: c_void_p, UINT, WPARAM, LPARAM all wrap silently). On this computer handles are small, so it never shows here.
+- 0.1.8 declares every remaining call (CreateFontW, InternetOpenW, SHBrowseForFolderW, CoInitialize). Rule: every new ctypes call gets argtypes (and restype for handles).
+- The error dialog now says "Setup <version> failed", the exception and "At: file:line function < ..." from the traceback, and asks the player to copy it with Control+C.
+
+## Releases so far
+0.1 (2026-10-12), 0.1.1-0.1.4 (2026-10-13), 0.1.5 (R/L keys, Unpurchased landing, adaptive timer), 0.1.6 (tables, shortcut hints removed), 0.1.7 (D key, hints back), 0.1.8 (installer fix), all from 2026-10-14/15. Asset link pattern: https://github.com/Shehryar157/RGAccess/releases/download/v<version>/RGAccess-Setup.exe
+- On this computer: running the setup needs `python tools/build.py --restore` first (the game holds the dev build); after a release build, `python tools/build.py` puts the dev build back.

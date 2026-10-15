@@ -108,6 +108,8 @@ def fetch(address, path, progress):
     net.InternetReadFile.argtypes = [ctypes.c_void_p, ctypes.c_void_p, wintypes.DWORD,
                                      ctypes.POINTER(wintypes.DWORD)]
     net.InternetCloseHandle.argtypes = [ctypes.c_void_p]
+    net.InternetOpenW.argtypes = [wintypes.LPCWSTR, wintypes.DWORD, wintypes.LPCWSTR, wintypes.LPCWSTR,
+                                  wintypes.DWORD]
     session = net.InternetOpenW("RGAccess-Setup", 0, None, None, 0)
     # Always fresh from the server, not from the cache.
     url = net.InternetOpenUrlW(session, address, None, 0, 0x80000000 | 0x04000000, 0) if session else None
@@ -256,6 +258,8 @@ def browse_for_folder(title):
 
     shell32, ole32 = ctypes.windll.shell32, ctypes.windll.ole32
     shell32.SHBrowseForFolderW.restype = ctypes.c_void_p
+    shell32.SHBrowseForFolderW.argtypes = [ctypes.POINTER(BROWSEINFO)]
+    ole32.CoInitialize.argtypes = [ctypes.c_void_p]
     shell32.SHGetPathFromIDListW.argtypes = [ctypes.c_void_p, wintypes.LPWSTR]
     ole32.CoTaskMemFree.argtypes = [ctypes.c_void_p]
     ole32.CoInitialize(None)
@@ -467,7 +471,13 @@ def main():
         message(f"Windows refused to change a file:\n{e}\n\n"
                 "Try running the setup again as administrator.", MB_OK | MB_ICONERROR)
     except Exception as e:  # show the problem rather than vanish silently
-        message(f"Setup failed:\n{e!r}", MB_OK | MB_ICONERROR)
+        # Where it happened too (file, line, function), so a player's report pins it down.
+        import traceback
+        where = " < ".join(f"{os.path.basename(f.filename)}:{f.lineno} {f.name}"
+                           for f in reversed(traceback.extract_tb(e.__traceback__)))
+        message(f"Setup {VERSION} failed:\n{e!r}\n\nAt: {where}\n\n"
+                "Press Control+C to copy this message and send it to the mod's author.",
+                MB_OK | MB_ICONERROR)
 
 
 if __name__ == "__main__":
